@@ -72,7 +72,7 @@ function alSoltar(e: PointerEvent) {
         <!-- Imagen principal -->
         <div class="relative min-w-0 flex-1">
             <div
-                class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-3xl bg-surface select-none"
+                class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-3xl bg-card ring-1 shadow-brand-sm ring-border/70 select-none"
                 @pointerenter="zoom = true"
                 @pointerleave="zoom = false"
                 @pointermove="mover"
@@ -82,8 +82,8 @@ function alSoltar(e: PointerEvent) {
             >
                 <Transition
                     mode="out-in"
-                    enter-active-class="transition-opacity duration-300"
-                    enter-from-class="opacity-0"
+                    enter-active-class="transition-[opacity,filter] duration-300 ease-out motion-reduce:transition-none"
+                    enter-from-class="opacity-0 blur-sm"
                     leave-active-class="transition-opacity duration-150"
                     leave-to-class="opacity-0"
                 >
@@ -151,7 +151,7 @@ function alSoltar(e: PointerEvent) {
             <li v-for="(src, indice) in imagenes" :key="src" class="shrink-0">
                 <button
                     type="button"
-                    class="block size-16 overflow-hidden rounded-2xl bg-surface ring-offset-2 ring-offset-background transition-[box-shadow,opacity] sm:size-20"
+                    class="block size-16 overflow-hidden rounded-2xl bg-card ring-offset-2 ring-offset-background transition-[box-shadow,opacity,transform] duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 sm:size-20"
                     :class="
                         indice === actual
                             ? 'ring-2 ring-brand-green'

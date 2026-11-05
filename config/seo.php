@@ -28,10 +28,30 @@ return [
     */
     'sitio' => 'Mr Lana',
 
+    /*
+    | Variantes con que la gente busca la marca. Van en `alternateName` de Organization y
+    | WebSite (JSON-LD) para que Google asocie "tienda mr lana", "mr. lana", etc. al sitio.
+    */
+    'nombres_alternos' => ['Tienda Mr Lana', 'Mr. Lana', 'MrLana', 'Mr Lana Tienda'],
+
+    /*
+    | <title> del home (el resto usa "{Página} | Mr Lana Tienda").
+    */
+    'titulo_home' => 'Mr Lana | Tienda en línea de muebles y artículos para el hogar',
+
+    /*
+    | Verificación de propiedad para Google Search Console y Bing Webmaster Tools
+    | (método "etiqueta HTML": sólo el valor de content). Vacío = no se emite la meta.
+    */
+    'verificacion' => [
+        'google' => env('SEO_GOOGLE_VERIFICATION'),
+        'bing' => env('SEO_BING_VERIFICATION'),
+    ],
+
     'locale' => 'es_MX',
 
     'moneda' => 'MXN',
 
-    'descripcion' => 'Tienda en línea Mr Lana: muebles y artículos para el hogar. Compra en línea y paga por transferencia o en efectivo.',
+    'descripcion' => 'Tienda Mr Lana: tienda en línea de muebles y artículos para el hogar. Explora el catálogo, compra en línea y paga por transferencia o en efectivo.',
 
 ];

@@ -65,7 +65,7 @@ const describedBy = computed(() =>
             :required="requerido"
             :aria-invalid="!!error"
             :aria-describedby="describedBy || undefined"
-            class="h-11"
+            class="h-11 bg-card transition focus-visible:border-brand-green"
         />
         <p
             v-if="ayuda && !error"

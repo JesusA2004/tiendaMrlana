@@ -11,8 +11,8 @@ const { state } = useSidebar();
             :class="[
                 'flex items-center justify-center overflow-hidden',
                 state === 'expanded'
-                    ? 'h-10 w-auto rounded-md'
-                    : 'aspect-square size-12 rounded-md bg-sidebar-primary text-sidebar-primary-foreground',
+                    ? 'h-12 w-auto rounded-xl bg-white px-3 py-1 shadow-sm'
+                    : 'aspect-square size-12 rounded-md bg-white text-sidebar-primary-foreground',
             ]"
         >
             <AppLogoIcon />

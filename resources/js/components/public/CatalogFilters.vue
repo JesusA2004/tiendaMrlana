@@ -104,18 +104,18 @@ function alternar<K extends 'categoria' | 'marca' | 'disponibilidad'>(
                     v-for="opcion in disponibilidades"
                     :key="opcion.valor"
                     type="button"
-                    class="inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-[background-color,border-color,color] duration-200"
+                    class="inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-[background-color,border-color,color,transform,box-shadow] duration-200 active:scale-95 motion-reduce:active:scale-100"
                     :class="
                         filtros.disponibilidad === opcion.valor
-                            ? 'border-brand-ink bg-brand-ink text-white dark:border-primary dark:bg-primary dark:text-primary-foreground'
-                            : 'border-border bg-background hover:border-foreground/40'
+                            ? 'border-brand-deep bg-brand-deep text-white shadow-brand-sm'
+                            : 'border-border bg-card hover:-translate-y-0.5 hover:border-brand-green hover:bg-brand-green-soft motion-reduce:hover:translate-y-0'
                     "
                     :aria-pressed="filtros.disponibilidad === opcion.valor"
                     @click="alternar('disponibilidad', opcion.valor)"
                 >
                     <Check
                         v-if="filtros.disponibilidad === opcion.valor"
-                        class="size-3.5"
+                        class="size-3.5 animate-in duration-200 zoom-in-50"
                         aria-hidden="true"
                     />
                     {{ opcion.etiqueta }}
@@ -159,11 +159,11 @@ function alternar<K extends 'categoria' | 'marca' | 'disponibilidad'>(
                 >
                     <button
                         type="button"
-                        class="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm transition-colors"
+                        class="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm transition-[background-color,color,padding] duration-200"
                         :class="
                             filtros.categoria === categoria.slug
                                 ? 'bg-brand-green-soft font-semibold text-foreground'
-                                : 'text-foreground/80 hover:bg-muted'
+                                : 'text-foreground/80 hover:bg-brand-green-soft/60 hover:pl-4 motion-reduce:hover:pl-3'
                         "
                         :aria-pressed="filtros.categoria === categoria.slug"
                         @click="alternar('categoria', categoria.slug)"
@@ -213,11 +213,11 @@ function alternar<K extends 'categoria' | 'marca' | 'disponibilidad'>(
                 <li v-for="marca in marcasVisibles" :key="marca.slug">
                     <button
                         type="button"
-                        class="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm transition-colors"
+                        class="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm transition-[background-color,color,padding] duration-200"
                         :class="
                             filtros.marca === marca.slug
                                 ? 'bg-brand-green-soft font-semibold text-foreground'
-                                : 'text-foreground/80 hover:bg-muted'
+                                : 'text-foreground/80 hover:bg-brand-green-soft/60 hover:pl-4 motion-reduce:hover:pl-3'
                         "
                         :aria-pressed="filtros.marca === marca.slug"
                         @click="alternar('marca', marca.slug)"

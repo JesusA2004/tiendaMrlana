@@ -3,6 +3,7 @@ import {
     Download,
     ExternalLink,
     FileText,
+    History,
     ImageOff,
     MapPin,
     Package,
@@ -40,13 +41,13 @@ const etiquetaComprobante: Record<string, string> = {
     <div class="space-y-5">
         <!-- Estado -->
         <section
-            class="rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+            class="rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 hover:shadow-brand sm:p-6"
             aria-labelledby="titulo-estado"
         >
             <div class="mb-5 flex flex-wrap items-center gap-2">
                 <h2
                     id="titulo-estado"
-                    class="mr-auto font-display text-lg font-bold"
+                    class="mr-auto font-display text-lg font-bold text-brand-deep"
                 >
                     Estado del pedido
                 </h2>
@@ -69,7 +70,7 @@ const etiquetaComprobante: Record<string, string> = {
 
         <!-- Entrega -->
         <section
-            class="grid gap-4 rounded-3xl border border-border bg-background p-5 shadow-xs sm:grid-cols-2 sm:p-6"
+            class="grid gap-4 rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 hover:shadow-brand sm:grid-cols-2 sm:p-6"
             aria-label="Entrega"
         >
             <div class="flex gap-3">
@@ -142,7 +143,7 @@ const etiquetaComprobante: Record<string, string> = {
                             :href="pedido.url_rastreo"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold text-brand-ink transition hover:brightness-95"
+                            class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold text-brand-ink shadow-brand-sm transition hover:-translate-y-px hover:brightness-95"
                         >
                             <ExternalLink class="size-3.5" aria-hidden="true" />
                             Rastrear mi envío
@@ -173,12 +174,12 @@ const etiquetaComprobante: Record<string, string> = {
 
         <!-- Productos -->
         <section
-            class="rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+            class="rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 hover:shadow-brand sm:p-6"
             aria-labelledby="titulo-productos"
         >
             <h2
                 id="titulo-productos"
-                class="mb-4 flex items-center gap-2 font-display text-lg font-bold"
+                class="mb-4 flex items-center gap-2 font-display text-lg font-bold text-brand-deep"
             >
                 <Package
                     class="size-5 text-brand-green-strong"
@@ -190,16 +191,16 @@ const etiquetaComprobante: Record<string, string> = {
                 <li
                     v-for="item in pedido.items"
                     :key="item.id"
-                    class="flex gap-3 py-3 first:pt-0"
+                    class="group/item -mx-2 flex gap-3 rounded-xl px-2 py-3 transition-colors first:pt-2 hover:bg-brand-green-soft/50"
                 >
                     <span
-                        class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface"
+                        class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-green-soft"
                     >
                         <img
                             v-if="item.imagen"
                             :src="item.imagen"
                             :alt="item.nombre"
-                            class="size-full object-cover"
+                            class="size-full object-cover transition-transform duration-500 group-hover/item:scale-105"
                             loading="lazy"
                         />
                         <ImageOff
@@ -220,9 +221,7 @@ const etiquetaComprobante: Record<string, string> = {
                     </p>
                 </li>
             </ul>
-            <div
-                class="mt-4 border-t border-border pt-4 sm:ml-auto sm:max-w-sm"
-            >
+            <div class="mt-4 rounded-2xl bg-surface p-4 sm:ml-auto sm:max-w-sm">
                 <ResumenTotales
                     :subtotal="pedido.subtotal"
                     :descuento-ofertas="pedido.ahorro_ofertas"
@@ -253,20 +252,24 @@ const etiquetaComprobante: Record<string, string> = {
         <!-- Comprobantes -->
         <section
             v-if="pedido.comprobantes.length"
-            class="rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+            class="rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 hover:shadow-brand sm:p-6"
             aria-labelledby="titulo-comprobantes"
         >
             <h2
                 id="titulo-comprobantes"
-                class="mb-3 font-display text-lg font-bold"
+                class="mb-3 flex items-center gap-2 font-display text-lg font-bold text-brand-deep"
             >
+                <FileText
+                    class="size-5 text-brand-green-strong"
+                    aria-hidden="true"
+                />
                 Comprobantes enviados
             </h2>
             <ul class="space-y-2">
                 <li
                     v-for="c in pedido.comprobantes"
                     :key="c.id"
-                    class="flex items-start gap-3 rounded-2xl bg-surface/70 p-3 text-sm"
+                    class="flex items-start gap-3 rounded-2xl border border-transparent bg-surface p-3 text-sm transition hover:border-brand-green/40 hover:bg-brand-green-soft/50"
                 >
                     <FileText
                         class="size-5 shrink-0 text-muted-foreground"
@@ -307,7 +310,7 @@ const etiquetaComprobante: Record<string, string> = {
                             >
                             <a
                                 :href="c.url"
-                                class="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-semibold hover:border-brand-green"
+                                class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold transition hover:-translate-y-px hover:border-brand-green hover:bg-brand-green-soft focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                             >
                                 <Download class="size-3.5" aria-hidden="true" />
                                 Descargar
@@ -321,23 +324,27 @@ const etiquetaComprobante: Record<string, string> = {
         <!-- Historial -->
         <section
             v-if="pedido.historial.length"
-            class="rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+            class="rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 hover:shadow-brand sm:p-6"
             aria-labelledby="titulo-historial"
         >
             <h2
                 id="titulo-historial"
-                class="mb-3 font-display text-lg font-bold"
+                class="mb-3 flex items-center gap-2 font-display text-lg font-bold text-brand-deep"
             >
+                <History
+                    class="size-5 text-brand-green-strong"
+                    aria-hidden="true"
+                />
                 Historial
             </h2>
             <ol class="space-y-3 border-l-2 border-border pl-4">
                 <li
                     v-for="h in pedido.historial"
                     :key="h.id"
-                    class="relative text-sm"
+                    class="relative animate-fade-up text-sm"
                 >
                     <span
-                        class="absolute top-1.5 -left-[21px] size-2.5 rounded-full bg-brand-teal ring-4 ring-background"
+                        class="absolute top-1.5 -left-[21px] size-2.5 rounded-full bg-brand-teal ring-4 ring-card"
                         aria-hidden="true"
                     />
                     <p class="font-medium">{{ h.comentario || h.estatus }}</p>

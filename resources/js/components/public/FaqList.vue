@@ -14,13 +14,13 @@ defineProps<{ preguntas: PreguntaFrecuente[] }>();
     <Accordion
         type="single"
         collapsible
-        class="divide-y divide-border/70 overflow-hidden rounded-3xl border border-border/70 bg-card"
+        class="divide-y divide-border/70 overflow-hidden rounded-3xl border border-border/70 bg-card shadow-brand-sm"
     >
         <AccordionItem
             v-for="(item, indice) in preguntas"
             :key="indice"
             :value="`faq-${indice}`"
-            class="border-b-0 px-5 transition-colors data-[state=open]:bg-brand-green-soft/50 sm:px-7"
+            class="border-b-0 px-5 transition-colors duration-200 hover:bg-brand-green-soft/30 data-[state=open]:bg-brand-green-soft/60 sm:px-7"
         >
             <AccordionTrigger
                 class="py-5 text-left font-sans text-[15px] font-semibold hover:no-underline sm:text-base [&>svg]:size-5 [&>svg]:text-brand-green-strong"

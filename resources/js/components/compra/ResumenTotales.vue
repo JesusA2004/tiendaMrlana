@@ -79,13 +79,23 @@ withDefaults(
         <div
             class="mt-1 flex items-end justify-between gap-4 border-t border-border pt-3"
         >
-            <dt class="font-display text-base font-bold">
+            <dt class="font-display text-base font-bold text-brand-deep">
                 {{ etiquetaTotal }}
             </dt>
             <dd
-                class="font-display text-2xl leading-none font-extrabold tabular-nums"
+                class="font-display text-2xl leading-none font-extrabold text-brand-deep tabular-nums"
             >
-                {{ moneda(total) }}
+                <Transition
+                    mode="out-in"
+                    enter-active-class="transition duration-300 motion-reduce:transition-none"
+                    enter-from-class="opacity-0 translate-y-1"
+                    leave-active-class="transition duration-150 motion-reduce:transition-none"
+                    leave-to-class="opacity-0 -translate-y-1"
+                >
+                    <span :key="total" class="inline-block">{{
+                        moneda(total)
+                    }}</span>
+                </Transition>
                 <span class="ml-0.5 text-xs font-semibold text-muted-foreground"
                     >MXN</span
                 >

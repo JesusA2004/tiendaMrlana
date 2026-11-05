@@ -123,7 +123,8 @@ class TiendaController extends Controller
             'faq' => $this->faq(),
             'seo' => Seo::nuevo()
                 ->titulo('Muebles y artículos para el hogar')
-                ->tituloSocial(Seo::sitio().' · '.($this->config->string('tienda.eslogan') ?? 'Muebles y artículos para el hogar'))
+                ->tituloDocumento((string) config('seo.titulo_home'))
+                ->tituloSocial('Tienda '.Seo::sitio().' · '.($this->config->string('tienda.eslogan') ?? 'Muebles y artículos para el hogar'))
                 ->canonical(route('home', [], false))
                 ->conOrganizacion()
                 ->toArray(),
@@ -434,7 +435,7 @@ class TiendaController extends Controller
             ]));
 
         foreach ($this->config->enlaces() as $enlace) {
-            $urls->push(['loc' => Seo::absoluta($enlace['url']), 'lastmod' => null, 'priority' => '0.3', 'imagenes' => []]);
+            $urls->push(['loc' => Seo::absoluta($enlace['url']), 'lastmod' => null, 'priority' => '0.5', 'imagenes' => []]);
         }
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"

@@ -124,7 +124,7 @@ function eliminar(p: Paqueteria) {
 <template>
     <Head title="Paqueterías" />
 
-    <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
+    <div class="flex w-full animate-page-in flex-col gap-6 p-4 md:p-6">
         <PageHeader
             eyebrow="Envíos"
             title="Paqueterías"
@@ -135,7 +135,7 @@ function eliminar(p: Paqueteria) {
             </Button>
         </PageHeader>
 
-        <Alert class="border-info/30 bg-info/5">
+        <Alert class="animate-fade-up border-info/30 bg-info/5">
             <Link2 class="size-4 text-info" />
             <AlertDescription>
                 Si agregas la URL de rastreo con el marcador
@@ -163,25 +163,28 @@ function eliminar(p: Paqueteria) {
             >
         </EmptyState>
 
-        <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div
+            v-else
+            class="grid stagger-children gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+        >
             <article
                 v-for="p in paqueterias"
                 :key="p.id"
                 :class="[
-                    'flex flex-col gap-3 rounded-2xl border bg-card p-4 transition',
+                    'group flex hover-lift flex-col gap-3 surface-card rounded-2xl border bg-card p-4',
                     !p.activo && 'opacity-70',
                 ]"
             >
                 <header class="flex items-start justify-between gap-3">
                     <div class="flex min-w-0 items-center gap-3">
                         <span
-                            class="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-teal-soft text-brand-teal-strong"
+                            class="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-teal-soft text-brand-teal-strong transition-all duration-300 group-hover:scale-110 group-hover:bg-brand-green-soft group-hover:text-brand-green-strong"
                         >
                             <Truck class="size-5" />
                         </span>
                         <div class="min-w-0">
                             <h2
-                                class="truncate font-display text-lg font-semibold"
+                                class="truncate font-display text-lg font-semibold transition-colors group-hover:text-brand-green-strong"
                             >
                                 {{ p.nombre }}
                             </h2>
@@ -216,9 +219,12 @@ function eliminar(p: Paqueteria) {
                         :href="p.ejemplo_rastreo"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="inline-flex items-center gap-1 text-xs font-semibold text-brand-green-strong hover:underline"
+                        class="group/link inline-flex items-center gap-1 text-xs font-semibold text-brand-green-strong hover:underline"
                     >
-                        Probar enlace <ExternalLink class="size-3" />
+                        Probar enlace
+                        <ExternalLink
+                            class="size-3 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5"
+                        />
                     </a>
                     <p
                         v-if="p.notas"
@@ -279,7 +285,7 @@ function eliminar(p: Paqueteria) {
             ¿Tarifas automáticas por zona?
             <Link
                 href="/admin/reglas-envio"
-                class="font-semibold text-brand-green-strong hover:underline"
+                class="link-underline font-semibold text-brand-green-strong"
                 >Reglas de envío</Link
             >. Sin reglas, todo envío a domicilio se cotiza con estas
             paqueterías.

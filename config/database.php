@@ -58,7 +58,9 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            'engine' => env('DB_ENGINE'),
+            // Lista separada por comas para forzar el sql_mode de la sesión (p. ej. pruebas estrictas).
+            'modes' => env('DB_SQL_MODES') ? explode(',', (string) env('DB_SQL_MODES')) : null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -78,7 +80,9 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            'engine' => env('DB_ENGINE'),
+            // Lista separada por comas para forzar el sql_mode de la sesión (p. ej. pruebas estrictas).
+            'modes' => env('DB_SQL_MODES') ? explode(',', (string) env('DB_SQL_MODES')) : null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

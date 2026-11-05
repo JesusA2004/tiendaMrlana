@@ -3,8 +3,10 @@
 use App\Enums\EstadoPublicacion;
 use App\Models\Categoria;
 use App\Models\Producto;
+use App\Models\ProductoImagen;
 use App\Services\Catalogo\Importacion\ImportadorCatalogoMuebles;
 use Database\Seeders\CatalogoMueblesSeeder;
+use Illuminate\Support\Facades\Storage;
 
 it('importa los 25 modelos como pendientes, ocultos, sin precio, sin stock y sin imágenes', function () {
     $this->artisan('catalogo:importar-muebles')
@@ -117,4 +119,78 @@ it('los productos importados no aparecen en la tienda pública', function () {
         ->assertDontSee('90243297');
 
     $this->get('/productos/'.$producto->slug)->assertNotFound();
+});
+
+it('con --imagenes --publicar adjunta las fotos, usa el precio del catálogo y publica los 25 (idempotente)', function () {
+    Storage::fake('public');
+
+    $this->artisan('catalogo:importar-muebles', ['--imagenes' => true, '--publicar' => true])
+        ->expectsOutputToContain('25 publicados ahora, 0 con pendientes')
+        ->assertSuccessful();
+
+    expect(Producto::publicados()->count())->toBe(25)
+        ->and(Producto::where('modalidad_venta', 'bajo_pedido')->whereNull('tiempo_entrega_dias')->count())->toBe(25)
+        ->and(Producto::whereNull('aprobado_en')->count())->toBe(0)
+        ->and(Producto::doesntHave('imagenes')->count())->toBe(0)
+        ->and(Producto::where('stock', '!=', 0)->count())->toBe(0);
+
+    $lack = Producto::where('codigo_referencia', '90243297')->firstOrFail();
+    expect((float) $lack->precio)->toBe(699.0)
+        ->and($lack->imagenes()->count())->toBe(2)
+        ->and($lack->imagenes()->where('principal', true)->value('ruta'))->toBe($lack->imagen_principal);
+    Storage::disk('public')->assertExists($lack->imagen_principal);
+
+    $totalImagenes = ProductoImagen::count();
+
+    $this->artisan('catalogo:importar-muebles', ['--imagenes' => true, '--publicar' => true])
+        ->expectsOutputToContain('0 con cambios, 25 sin cambios')
+        ->assertSuccessful();
+
+    expect(ProductoImagen::count())->toBe($totalImagenes);
+
+    $this->get('/productos/'.$lack->slug)->assertOk();
+});
+
+it('--publicar no pisa precios, modalidad ni estado definidos por el admin; --forzar-precios sí re-sincroniza el precio', function () {
+    Storage::fake('public');
+    app(ImportadorCatalogoMuebles::class)->importar();
+
+    $editado = Producto::where('codigo_referencia', '90243297')->firstOrFail();
+    $editado->forceFill(['precio' => 1299])->save();
+    $pausado = Producto::where('codigo_referencia', '30449908')->firstOrFail();
+    $pausado->forceFill(['estado_publicacion' => EstadoPublicacion::Pausado->value])->save();
+
+    $this->artisan('catalogo:importar-muebles', ['--imagenes' => true, '--publicar' => true])
+        ->expectsOutputToContain('No publicado ML-MUE-30449908')
+        ->assertSuccessful();
+
+    expect((float) $editado->fresh()->precio)->toBe(1299.0)
+        ->and($editado->fresh()->estado_publicacion)->toBe('publicado')
+        ->and($pausado->fresh()->estado_publicacion)->toBe('pausado')
+        ->and($pausado->fresh()->modalidad_venta)->toBe('inventario')
+        ->and(Producto::publicados()->count())->toBe(24);
+
+    $this->artisan('catalogo:importar-muebles', ['--forzar-precios' => true])->assertSuccessful();
+
+    expect((float) $editado->fresh()->precio)->toBe(699.0);
+});
+
+it('sin fotos no publica y reporta el faltante', function () {
+    $this->artisan('catalogo:importar-muebles', ['--publicar' => true])
+        ->expectsOutputToContain('Agregar al menos una imagen autorizada.')
+        ->assertSuccessful();
+
+    expect(Producto::publicados()->count())->toBe(0)
+        ->and(Producto::whereNotNull('precio')->count())->toBe(25);
+});
+
+it('el seeder publica con CATALOGO_MUEBLES_PUBLICAR', function () {
+    Storage::fake('public');
+    config(['catalogo.muebles_publicar' => true]);
+
+    $this->seed(CatalogoMueblesSeeder::class);
+    $this->seed(CatalogoMueblesSeeder::class);
+
+    expect(Producto::publicados()->count())->toBe(25)
+        ->and(ProductoImagen::count())->toBe(47);
 });

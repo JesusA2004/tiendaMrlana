@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import { Clock, Mail, MapPin, MessageCircle, Phone } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import logo from '@/img/logo.png';
 import { urls } from './tienda';
 import type { PropsCompartidasTienda } from './types';
+import { useMenuCategorias } from './useMenuCategorias';
 
 const page = usePage<PropsCompartidasTienda>();
+const { categorias, cargar } = useMenuCategorias();
+
+onMounted(() => {
+    cargar();
+});
 
 const tienda = computed(() => page.props.tienda ?? null);
 const nombre = computed(() => tienda.value?.nombre || 'Mr Lana');
@@ -89,7 +95,10 @@ const hayContacto = computed(
                 >
                     {{ tienda.eslogan }}
                 </p>
-                <p class="mt-4 max-w-sm text-sm leading-relaxed text-white/70">
+                <p class="mt-4 max-w-sm text-sm leading-relaxed text-white/75">
+                    <strong class="font-semibold text-white"
+                        >Tienda Mr Lana</strong
+                    >: tienda en línea de muebles y artículos para el hogar.
                     Compra en línea y da seguimiento a tu pedido desde tu
                     cuenta.
                 </p>
@@ -100,7 +109,7 @@ const hayContacto = computed(
                             :href="red.url"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="inline-flex h-10 items-center rounded-full border border-white/20 px-4 text-sm font-medium text-white/90 transition-colors hover:border-brand-green hover:bg-white/5 hover:text-white"
+                            class="inline-flex h-10 items-center rounded-full border border-white/20 px-4 text-sm font-medium text-white/90 transition-[background-color,border-color,color,transform] duration-200 hover:-translate-y-0.5 hover:border-brand-green hover:bg-white/10 hover:text-white motion-reduce:hover:translate-y-0"
                         >
                             {{ red.nombre }}
                         </a>
@@ -118,21 +127,21 @@ const hayContacto = computed(
                     <li>
                         <Link
                             :href="urls.catalogo"
-                            class="text-white/75 transition-colors hover:text-white"
+                            class="link-underline text-white/75 transition-colors hover:text-white"
                             >Catálogo</Link
                         >
                     </li>
                     <li>
                         <Link
                             :href="urls.carrito"
-                            class="text-white/75 transition-colors hover:text-white"
+                            class="link-underline text-white/75 transition-colors hover:text-white"
                             >Mi carrito</Link
                         >
                     </li>
                     <li>
                         <Link
                             :href="urls.misPedidos"
-                            class="text-white/75 transition-colors hover:text-white"
+                            class="link-underline text-white/75 transition-colors hover:text-white"
                             >Mis pedidos</Link
                         >
                     </li>
@@ -149,7 +158,7 @@ const hayContacto = computed(
                     <li v-for="enlace in enlaces" :key="enlace.url">
                         <Link
                             :href="enlace.url"
-                            class="text-white/75 transition-colors hover:text-white"
+                            class="link-underline text-white/75 transition-colors hover:text-white"
                             >{{ enlace.titulo }}</Link
                         >
                     </li>
@@ -233,11 +242,39 @@ const hayContacto = computed(
             </div>
         </div>
 
+        <nav
+            v-if="categorias.length"
+            class="border-t border-white/10"
+            aria-label="Categorías de la tienda"
+        >
+            <div
+                class="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-6 sm:flex-row sm:items-center sm:gap-5 sm:px-6 lg:px-8"
+            >
+                <h2
+                    class="shrink-0 font-display text-base font-semibold text-brand-green"
+                >
+                    Categorías
+                </h2>
+                <ul class="flex flex-wrap gap-2">
+                    <li v-for="categoria in categorias" :key="categoria.slug">
+                        <Link
+                            :href="urls.categoria(categoria.slug)"
+                            class="inline-flex h-8 items-center rounded-full bg-white/[0.06] px-3.5 text-xs font-medium text-white/80 ring-1 ring-white/10 transition-[background-color,color,box-shadow] duration-200 hover:bg-brand-green hover:text-brand-ink hover:ring-brand-green"
+                            >{{ categoria.nombre }}</Link
+                        >
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
         <div class="border-t border-white/10">
             <div
                 class="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-white/60 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8"
             >
-                <p>© {{ anio }} {{ nombre }}. Todos los derechos reservados.</p>
+                <p>
+                    © {{ anio }} {{ nombre }} · Tienda en línea de muebles y
+                    artículos para el hogar.
+                </p>
                 <p>Precios en pesos mexicanos (MXN).</p>
             </div>
         </div>

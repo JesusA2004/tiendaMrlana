@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { FileUp, Loader2, Paperclip, X } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { FileText, FileUp, Loader2, X } from 'lucide-vue-next';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import CampoTexto from './CampoTexto.vue';
 import { tamanoArchivo } from './formato';
@@ -20,6 +20,17 @@ const props = defineProps<{
 
 const input = ref<HTMLInputElement | null>(null);
 const errorLocal = ref<string | null>(null);
+const arrastrando = ref(false);
+const vistaPrevia = ref<string | null>(null);
+
+function limpiarVista() {
+    if (vistaPrevia.value) {
+        URL.revokeObjectURL(vistaPrevia.value);
+        vistaPrevia.value = null;
+    }
+}
+
+onBeforeUnmount(limpiarVista);
 
 const form = useForm<{
     archivo: File | null;
@@ -40,9 +51,17 @@ const hoy = new Date().toLocaleDateString('en-CA', {
 const errorArchivo = computed(() => errorLocal.value ?? form.errors.archivo);
 
 function elegir(event: Event) {
-    const archivo = (event.target as HTMLInputElement).files?.[0] ?? null;
+    procesar((event.target as HTMLInputElement).files?.[0] ?? null);
+}
 
+function soltar(event: DragEvent) {
+    arrastrando.value = false;
+    procesar(event.dataTransfer?.files?.[0] ?? null);
+}
+
+function procesar(archivo: File | null) {
     errorLocal.value = null;
+    limpiarVista();
 
     if (!archivo) {
         form.archivo = null;
@@ -68,10 +87,15 @@ function elegir(event: Event) {
     }
 
     form.archivo = archivo;
+
+    if (archivo.type.startsWith('image/')) {
+        vistaPrevia.value = URL.createObjectURL(archivo);
+    }
 }
 
 function quitar() {
     form.archivo = null;
+    limpiarVista();
 
     if (input.value) {
         input.value.value = '';
@@ -100,12 +124,12 @@ function enviar() {
 
 <template>
     <form
-        class="space-y-4 rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+        class="space-y-4 rounded-3xl border border-border bg-card p-5 shadow-brand-sm sm:p-6"
         novalidate
         @submit.prevent="enviar"
     >
         <div>
-            <h2 class="font-display text-lg font-bold">
+            <h2 class="font-display text-lg font-bold text-brand-deep">
                 {{
                     reintento
                         ? 'Envía un nuevo comprobante'
@@ -122,21 +146,34 @@ function enviar() {
         <div>
             <label
                 for="archivo-comprobante"
-                class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-center transition hover:border-brand-green hover:bg-brand-green-soft/40 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
-                :class="
-                    errorArchivo ? 'border-destructive/60' : 'border-border'
-                "
+                class="group relative flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-dashed px-4 py-8 text-center transition-all duration-200 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring motion-reduce:transition-none"
+                :class="[
+                    arrastrando
+                        ? 'scale-[1.01] border-brand-green bg-brand-green-soft ring-4 shadow-brand ring-brand-green/20'
+                        : errorArchivo
+                          ? 'border-destructive/60 bg-destructive/5'
+                          : 'border-brand-green/40 bg-surface hover:border-brand-green hover:bg-brand-green-soft/60',
+                ]"
+                @dragenter.prevent="arrastrando = true"
+                @dragover.prevent="arrastrando = true"
+                @dragleave.prevent="arrastrando = false"
+                @drop.prevent="soltar"
             >
-                <FileUp
-                    class="size-7 text-brand-green-strong"
-                    aria-hidden="true"
-                />
-                <span class="text-sm font-semibold"
-                    >Elegir archivo<span
-                        class="font-normal text-muted-foreground"
-                    >
-                        o tomar foto</span
-                    ></span
+                <span
+                    class="flex size-14 items-center justify-center rounded-full bg-card text-brand-green-strong shadow-brand-sm transition-transform duration-300 group-hover:-translate-y-1 motion-reduce:transition-none"
+                    :class="arrastrando ? '-translate-y-1 scale-110' : ''"
+                >
+                    <FileUp class="size-7" aria-hidden="true" />
+                </span>
+                <span class="text-sm font-semibold text-brand-deep">
+                    {{
+                        arrastrando
+                            ? 'Suelta tu comprobante aquí'
+                            : 'Arrastra tu comprobante o elige un archivo'
+                    }}
+                </span>
+                <span class="text-xs text-muted-foreground"
+                    >En el celular puedes tomar una foto</span
                 >
                 <input
                     id="archivo-comprobante"
@@ -149,26 +186,46 @@ function enviar() {
                     @change="elegir"
                 />
             </label>
-            <div
-                v-if="form.archivo"
-                class="mt-2 flex items-center gap-2 rounded-xl bg-surface px-3 py-2 text-sm"
+            <Transition
+                enter-active-class="transition duration-300 motion-reduce:transition-none"
+                enter-from-class="opacity-0 -translate-y-2 scale-95"
+                leave-active-class="transition duration-150 motion-reduce:transition-none"
+                leave-to-class="opacity-0 scale-95"
             >
-                <Paperclip class="size-4 shrink-0" aria-hidden="true" />
-                <span class="min-w-0 flex-1 truncate">{{
-                    form.archivo.name
-                }}</span>
-                <span class="text-xs text-muted-foreground">{{
-                    tamanoArchivo(form.archivo.size)
-                }}</span>
-                <button
-                    type="button"
-                    class="flex size-7 items-center justify-center rounded-full hover:bg-muted"
-                    aria-label="Quitar archivo"
-                    @click="quitar"
+                <div
+                    v-if="form.archivo"
+                    class="mt-3 flex items-center gap-3 rounded-2xl border border-brand-green/40 bg-card p-2 pr-3 text-sm shadow-brand-sm"
                 >
-                    <X class="size-4" aria-hidden="true" />
-                </button>
-            </div>
+                    <span
+                        class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-green-soft text-brand-green-strong"
+                    >
+                        <img
+                            v-if="vistaPrevia"
+                            :src="vistaPrevia"
+                            alt="Vista previa del comprobante"
+                            class="size-full object-cover"
+                        />
+                        <FileText v-else class="size-6" aria-hidden="true" />
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate font-semibold">{{
+                            form.archivo.name
+                        }}</span>
+                        <span class="text-xs text-muted-foreground"
+                            >{{ tamanoArchivo(form.archivo.size) }} · listo para
+                            enviar</span
+                        >
+                    </span>
+                    <button
+                        type="button"
+                        class="flex size-8 items-center justify-center rounded-full text-muted-foreground transition hover:rotate-90 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        aria-label="Quitar archivo"
+                        @click="quitar"
+                    >
+                        <X class="size-4" aria-hidden="true" />
+                    </button>
+                </div>
+            </Transition>
             <p
                 v-if="errorArchivo"
                 id="archivo-error"
@@ -199,7 +256,7 @@ function enviar() {
                     v-model="form.fecha_transferencia"
                     type="date"
                     :max="hoy"
-                    class="h-11 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    class="h-11 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs transition focus-visible:border-brand-green focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                     :aria-invalid="!!form.errors.fecha_transferencia"
                 />
                 <p
@@ -221,14 +278,14 @@ function enviar() {
 
         <div
             v-if="form.progress"
-            class="h-2 overflow-hidden rounded-full bg-muted"
+            class="h-2 overflow-hidden rounded-full bg-brand-green-soft"
             role="progressbar"
             :aria-valuenow="form.progress.percentage"
             aria-valuemin="0"
             aria-valuemax="100"
         >
             <div
-                class="h-full bg-brand-gradient transition-all"
+                class="h-full rounded-full bg-brand-gradient transition-all duration-300"
                 :style="{ width: `${form.progress.percentage ?? 0}%` }"
             />
         </div>
@@ -236,7 +293,7 @@ function enviar() {
         <Button
             type="submit"
             size="lg"
-            class="h-11 w-full rounded-full font-bold sm:w-auto"
+            class="h-11 w-full rounded-full font-bold shadow-brand-sm hover:-translate-y-0.5 hover:shadow-brand sm:w-auto"
             :disabled="form.processing"
         >
             <Loader2

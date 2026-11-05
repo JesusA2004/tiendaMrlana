@@ -3,7 +3,10 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import {
     AlertTriangle,
     ArrowLeft,
+    BadgeCheck,
     Check,
+    ClipboardCheck,
+    CreditCard,
     Clock3,
     ImageOff,
     Info,
@@ -13,11 +16,15 @@ import {
     ShieldCheck,
     Store,
     Truck,
+    UserRound,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import CampoTexto from '@/components/compra/CampoTexto.vue';
+import EncabezadoPaso from '@/components/compra/EncabezadoPaso.vue';
 import { ESTADOS_MX } from '@/components/compra/estados';
 import { moneda } from '@/components/compra/formato';
+import PasosCompra from '@/components/compra/PasosCompra.vue';
+import type { PasoCompra } from '@/components/compra/PasosCompra.vue';
 import ResumenTotales from '@/components/compra/ResumenTotales.vue';
 import type {
     CotizacionEnvio,
@@ -222,6 +229,71 @@ function confirmar() {
     });
 }
 
+/* ---- Sólo presentación: progreso visual del stepper (no valida nada). ---- */
+const contactoListo = computed(
+    () =>
+        form.nombre_cliente.trim().length > 1 &&
+        /.+@.+\..+/.test(form.correo_cliente) &&
+        form.telefono_cliente.replace(/\D/g, '').length >= 10,
+);
+const entregaLista = computed(() => {
+    if (!esDomicilio.value) {
+        return true;
+    }
+
+    if (form.usar_direccion_existente) {
+        return !!form.direccion_id;
+    }
+
+    return (
+        !!form.nombre_receptor.trim() &&
+        !!form.telefono.trim() &&
+        !!form.calle.trim() &&
+        !!form.numero_exterior.trim() &&
+        !!form.colonia.trim() &&
+        !!form.municipio.trim() &&
+        !!form.estado &&
+        /^\d{5}$/.test(form.codigo_postal)
+    );
+});
+const pagoListo = computed(() => !!metodoElegido.value?.disponible);
+
+const pasosCheckout = computed<PasoCompra[]>(() => {
+    const hechos = [contactoListo.value, entregaLista.value, pagoListo.value];
+    const pendiente = hechos.indexOf(false);
+    const actual = pendiente === -1 ? 3 : pendiente;
+    const base = [
+        { clave: 'contacto', titulo: 'Contacto', icono: UserRound },
+        { clave: 'entrega', titulo: 'Entrega', icono: Truck },
+        { clave: 'pago', titulo: 'Pago', icono: CreditCard },
+        { clave: 'revision', titulo: 'Revisión', icono: ClipboardCheck },
+    ];
+
+    return base.map((paso, i) => ({
+        ...paso,
+        estado:
+            i < 3 && hechos[i]
+                ? 'hecho'
+                : i === actual
+                  ? 'actual'
+                  : 'pendiente',
+    }));
+});
+const progresoCheckout = computed(
+    () =>
+        ([contactoListo.value, entregaLista.value, pagoListo.value].filter(
+            Boolean,
+        ).length /
+            3) *
+        100,
+);
+
+function irAPaso(clave: string) {
+    document
+        .getElementById(`paso-${clave}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function textoDireccion(d: Direccion): string {
     return `${d.calle} ${d.numero_exterior}${d.numero_interior ? ' int. ' + d.numero_interior : ''}, ${d.colonia}, ${d.municipio}, ${d.estado}, C.P. ${d.codigo_postal}`;
 }
@@ -231,30 +303,52 @@ function textoDireccion(d: Direccion): string {
     <Head title="Finalizar compra" />
 
     <PublicLayout>
-        <section class="bg-surface/60">
+        <section class="relative pb-28 lg:pb-0">
             <div
-                class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8"
+                class="relative mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8"
             >
-                <nav
-                    class="mb-6 flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-                    aria-label="Pasos de compra"
+                <div
+                    class="mb-6 flex animate-fade-up flex-wrap items-center justify-between gap-3"
                 >
-                    <Link
-                        :href="carrito.index.url()"
-                        class="hover:text-foreground"
-                        >1. Carrito</Link
+                    <div>
+                        <Link
+                            :href="carrito.index.url()"
+                            class="group inline-flex items-center gap-1 text-xs font-semibold tracking-wide text-brand-green-strong uppercase transition-colors hover:text-brand-deep"
+                        >
+                            <ArrowLeft
+                                class="size-3.5 transition-transform group-hover:-translate-x-0.5"
+                                aria-hidden="true"
+                            />
+                            Carrito
+                        </Link>
+                        <h1
+                            class="mt-1 font-display text-3xl font-extrabold tracking-tight text-brand-deep sm:text-4xl"
+                        >
+                            Finalizar compra
+                        </h1>
+                    </div>
+                    <p
+                        class="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-brand-deep ring-1 shadow-brand-sm ring-border"
                     >
-                    <span aria-hidden="true">›</span>
-                    <span class="text-brand-green-strong">2. Datos y pago</span>
-                    <span aria-hidden="true">›</span>
-                    <span>3. Confirmación</span>
-                </nav>
+                        <ShieldCheck
+                            class="size-4 text-brand-green-strong"
+                            aria-hidden="true"
+                        />
+                        Sin cobros en línea
+                    </p>
+                </div>
 
-                <h1
-                    class="mb-6 font-display text-3xl font-extrabold tracking-tight sm:text-4xl"
+                <div
+                    class="mb-6 animate-fade-up rounded-3xl border border-border bg-card px-3 py-4 shadow-brand-sm [--enter-delay:80ms] sm:px-6"
                 >
-                    Finalizar compra
-                </h1>
+                    <PasosCompra
+                        :pasos="pasosCheckout"
+                        :progreso="progresoCheckout"
+                        etiqueta="Pasos para finalizar la compra"
+                        interactivo
+                        @ir="irAPaso"
+                    />
+                </div>
 
                 <form
                     class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start"
@@ -264,19 +358,15 @@ function textoDireccion(d: Direccion): string {
                     <div class="space-y-5">
                         <!-- 1. Contacto -->
                         <fieldset
-                            class="rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+                            id="paso-contacto"
+                            class="scroll-mt-28 rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 focus-within:ring-2 focus-within:shadow-brand focus-within:ring-brand-green/30 sm:p-6"
                         >
                             <legend class="sr-only">Datos de contacto</legend>
-                            <h2
-                                class="mb-4 flex items-center gap-3 font-display text-xl font-bold"
-                                aria-hidden="true"
-                            >
-                                <span
-                                    class="flex size-8 items-center justify-center rounded-full bg-brand-green text-sm text-brand-ink"
-                                    >1</span
-                                >
-                                Datos de contacto
-                            </h2>
+                            <EncabezadoPaso
+                                :numero="1"
+                                titulo="Datos de contacto"
+                                :hecho="contactoListo"
+                            />
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div class="sm:col-span-2">
                                     <CampoTexto
@@ -316,19 +406,15 @@ function textoDireccion(d: Direccion): string {
 
                         <!-- 2. Entrega -->
                         <fieldset
-                            class="rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+                            id="paso-entrega"
+                            class="scroll-mt-28 rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 focus-within:ring-2 focus-within:shadow-brand focus-within:ring-brand-green/30 sm:p-6"
                         >
                             <legend class="sr-only">Entrega</legend>
-                            <h2
-                                class="mb-4 flex items-center gap-3 font-display text-xl font-bold"
-                                aria-hidden="true"
-                            >
-                                <span
-                                    class="flex size-8 items-center justify-center rounded-full bg-brand-green text-sm text-brand-ink"
-                                    >2</span
-                                >
-                                Entrega
-                            </h2>
+                            <EncabezadoPaso
+                                :numero="2"
+                                titulo="Entrega"
+                                :hecho="entregaLista"
+                            />
 
                             <div
                                 v-if="recogerDisponible"
@@ -341,11 +427,11 @@ function textoDireccion(d: Direccion): string {
                                         (x) => x.disponible,
                                     )"
                                     :key="m.value"
-                                    class="flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-4 transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+                                    class="flex cursor-pointer items-center gap-3 rounded-2xl border-2 bg-card p-4 transition-all duration-200 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring motion-reduce:transition-none"
                                     :class="
                                         form.modalidad_entrega === m.value
-                                            ? 'border-brand-green bg-brand-green-soft/60'
-                                            : 'border-border hover:border-brand-green/50'
+                                            ? 'scale-[1.01] border-brand-green bg-brand-green-soft/70 ring-2 shadow-brand-sm ring-brand-green/25'
+                                            : 'border-border hover:-translate-y-0.5 hover:border-brand-green/60 hover:shadow-brand-sm'
                                     "
                                 >
                                     <input
@@ -372,7 +458,7 @@ function textoDireccion(d: Direccion): string {
                                         v-if="
                                             form.modalidad_entrega === m.value
                                         "
-                                        class="ml-auto size-5 text-brand-green-strong"
+                                        class="ml-auto size-5 animate-scale-in text-brand-green-strong"
                                         aria-hidden="true"
                                     />
                                 </label>
@@ -381,7 +467,7 @@ function textoDireccion(d: Direccion): string {
                             <!-- Recoger en tienda -->
                             <div
                                 v-if="!esDomicilio && recoger"
-                                class="flex gap-3 rounded-2xl bg-brand-teal-soft/60 p-4 text-sm"
+                                class="flex animate-fade-in gap-3 rounded-2xl bg-brand-teal-soft/80 p-4 text-sm"
                             >
                                 <MapPin
                                     class="mt-0.5 size-5 shrink-0 text-brand-teal-strong"
@@ -418,12 +504,12 @@ function textoDireccion(d: Direccion): string {
                                     <label
                                         v-for="d in direcciones"
                                         :key="d.id"
-                                        class="flex cursor-pointer gap-3 rounded-2xl border-2 p-4 transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+                                        class="flex cursor-pointer gap-3 rounded-2xl border-2 bg-card p-4 transition-all duration-200 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring motion-reduce:transition-none"
                                         :class="
                                             form.usar_direccion_existente &&
                                             form.direccion_id === d.id
-                                                ? 'border-brand-green bg-brand-green-soft/60'
-                                                : 'border-border hover:border-brand-green/50'
+                                                ? 'scale-[1.01] border-brand-green bg-brand-green-soft/70 ring-2 shadow-brand-sm ring-brand-green/25'
+                                                : 'border-border hover:-translate-y-0.5 hover:border-brand-green/60 hover:shadow-brand-sm'
                                         "
                                     >
                                         <input
@@ -462,17 +548,17 @@ function textoDireccion(d: Direccion): string {
                                                 form.usar_direccion_existente &&
                                                 form.direccion_id === d.id
                                             "
-                                            class="ml-auto size-5 shrink-0 text-brand-green-strong"
+                                            class="ml-auto size-5 shrink-0 animate-scale-in text-brand-green-strong"
                                             aria-hidden="true"
                                         />
                                     </label>
                                     <button
                                         type="button"
-                                        class="flex items-center gap-2 rounded-2xl border-2 border-dashed p-4 text-left text-sm font-semibold transition"
+                                        class="flex items-center gap-2 rounded-2xl border-2 border-dashed p-4 text-left text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                                         :class="
                                             !form.usar_direccion_existente
-                                                ? 'border-brand-green bg-brand-green-soft/60'
-                                                : 'border-border hover:border-brand-green/50'
+                                                ? 'scale-[1.01] border-brand-green bg-brand-green-soft/70 ring-2 shadow-brand-sm ring-brand-green/25'
+                                                : 'border-border hover:-translate-y-0.5 hover:border-brand-green/60 hover:shadow-brand-sm'
                                         "
                                         :aria-pressed="
                                             !form.usar_direccion_existente
@@ -496,10 +582,10 @@ function textoDireccion(d: Direccion): string {
 
                                 <div
                                     v-if="!form.usar_direccion_existente"
-                                    class="grid gap-4 rounded-2xl sm:grid-cols-6"
+                                    class="grid animate-fade-up gap-4 rounded-2xl sm:grid-cols-6"
                                     :class="
                                         direcciones.length
-                                            ? 'border border-border p-4'
+                                            ? 'border border-border bg-surface p-4'
                                             : ''
                                     "
                                 >
@@ -576,7 +662,7 @@ function textoDireccion(d: Direccion): string {
                                         <select
                                             id="estado"
                                             v-model="form.estado"
-                                            class="h-11 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                            class="h-11 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs transition focus-visible:border-brand-green focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                                             autocomplete="address-level1"
                                             required
                                             :aria-invalid="!!form.errors.estado"
@@ -631,7 +717,7 @@ function textoDireccion(d: Direccion): string {
 
                                 <!-- Envío calculado en vivo -->
                                 <div
-                                    class="flex items-start gap-3 rounded-2xl p-4 text-sm"
+                                    class="flex items-start gap-3 rounded-2xl p-4 text-sm transition-colors duration-300"
                                     :class="
                                         envioPorCotizar
                                             ? 'bg-warning/10'
@@ -641,7 +727,7 @@ function textoDireccion(d: Direccion): string {
                                 >
                                     <Loader2
                                         v-if="recalculando"
-                                        class="mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground"
+                                        class="mt-0.5 size-5 shrink-0 animate-spin text-brand-green-strong"
                                         aria-hidden="true"
                                     />
                                     <Clock3
@@ -694,19 +780,15 @@ function textoDireccion(d: Direccion): string {
 
                         <!-- 3. Pago -->
                         <fieldset
-                            class="rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+                            id="paso-pago"
+                            class="scroll-mt-28 rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 focus-within:ring-2 focus-within:shadow-brand focus-within:ring-brand-green/30 sm:p-6"
                         >
                             <legend class="sr-only">Método de pago</legend>
-                            <h2
-                                class="mb-4 flex items-center gap-3 font-display text-xl font-bold"
-                                aria-hidden="true"
-                            >
-                                <span
-                                    class="flex size-8 items-center justify-center rounded-full bg-brand-green text-sm text-brand-ink"
-                                    >3</span
-                                >
-                                Método de pago
-                            </h2>
+                            <EncabezadoPaso
+                                :numero="3"
+                                titulo="Método de pago"
+                                :hecho="pagoListo"
+                            />
 
                             <div
                                 v-if="metodos_pago.length"
@@ -717,16 +799,16 @@ function textoDireccion(d: Direccion): string {
                                 <label
                                     v-for="m in metodos_pago"
                                     :key="m.clave"
-                                    class="flex gap-3 rounded-2xl border-2 p-4 transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+                                    class="group/metodo flex gap-3 rounded-2xl border-2 bg-card p-4 transition-all duration-200 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring motion-reduce:transition-none"
                                     :class="[
                                         !m.disponible
                                             ? 'cursor-not-allowed border-border opacity-60'
                                             : 'cursor-pointer',
                                         m.disponible &&
                                         form.metodo_pago === m.clave
-                                            ? 'border-brand-green bg-brand-green-soft/60'
+                                            ? 'scale-[1.01] border-brand-green bg-brand-green-soft/70 ring-2 shadow-brand-sm ring-brand-green/25'
                                             : m.disponible
-                                              ? 'border-border hover:border-brand-green/50'
+                                              ? 'border-border hover:-translate-y-0.5 hover:border-brand-green/60 hover:shadow-brand-sm'
                                               : '',
                                     ]"
                                 >
@@ -739,7 +821,7 @@ function textoDireccion(d: Direccion): string {
                                         class="sr-only"
                                     />
                                     <span
-                                        class="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-brand-green-strong [&_svg]:size-5"
+                                        class="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-green-soft text-brand-green-strong transition-transform duration-200 group-hover/metodo:scale-110 [&_svg]:size-5"
                                     >
                                         <MetodoPagoIcono :clave="m.clave" />
                                     </span>
@@ -778,7 +860,7 @@ function textoDireccion(d: Direccion): string {
                                             m.disponible &&
                                             form.metodo_pago === m.clave
                                         "
-                                        class="ml-auto size-5 shrink-0 text-brand-green-strong"
+                                        class="ml-auto size-5 shrink-0 animate-scale-in text-brand-green-strong"
                                         aria-hidden="true"
                                     />
                                 </label>
@@ -805,7 +887,8 @@ function textoDireccion(d: Direccion): string {
 
                         <!-- Notas -->
                         <div
-                            class="rounded-3xl border border-border bg-background p-5 shadow-xs sm:p-6"
+                            id="paso-notas"
+                            class="scroll-mt-28 rounded-3xl border border-border bg-card p-5 shadow-brand-sm transition-shadow duration-300 focus-within:ring-2 focus-within:shadow-brand focus-within:ring-brand-green/30 sm:p-6"
                         >
                             <Label
                                 for="notas_cliente"
@@ -820,155 +903,269 @@ function textoDireccion(d: Direccion): string {
                                 v-model="form.notas_cliente"
                                 rows="3"
                                 maxlength="1000"
-                                class="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                class="mt-1.5 w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs transition focus-visible:border-brand-green focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                                 placeholder="Indicaciones de entrega, horario preferido…"
                             />
                         </div>
                     </div>
 
                     <!-- 4. Revisión -->
-                    <aside class="space-y-4 lg:sticky lg:top-24">
+                    <aside
+                        id="paso-revision"
+                        class="animate-fade-up scroll-mt-28 space-y-4 [--enter-delay:140ms] lg:sticky lg:top-24"
+                    >
                         <div
-                            class="rounded-3xl border border-border bg-background p-5 shadow-sm"
+                            class="relative overflow-hidden rounded-3xl border border-border bg-card shadow-brand"
                             :aria-busy="recalculando"
                         >
-                            <h2
-                                class="mb-4 flex items-center gap-3 font-display text-xl font-bold"
+                            <div
+                                class="flex items-center gap-3 bg-brand-deep-pattern px-5 py-4 text-white"
                             >
                                 <span
-                                    class="flex size-8 items-center justify-center rounded-full bg-brand-green text-sm text-brand-ink"
+                                    class="flex size-9 items-center justify-center rounded-full bg-brand-green font-display text-sm font-bold text-brand-ink"
                                     aria-hidden="true"
                                     >4</span
                                 >
-                                Revisa tu pedido
-                            </h2>
-
-                            <ul
-                                class="mb-4 max-h-72 space-y-3 overflow-y-auto pr-1"
-                            >
-                                <li
-                                    v-for="item in items"
-                                    :key="item.producto_id"
-                                    class="flex gap-3"
-                                >
-                                    <span
-                                        class="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface"
-                                    >
-                                        <img
-                                            v-if="item.imagen"
-                                            :src="item.imagen"
-                                            :alt="item.nombre"
-                                            class="size-full object-cover"
-                                            loading="lazy"
-                                        />
-                                        <ImageOff
-                                            v-else
-                                            class="m-auto mt-4 size-5 text-muted-foreground"
-                                            aria-hidden="true"
-                                        />
-                                        <span
-                                            class="absolute top-0.5 right-0.5 flex min-w-5 items-center justify-center rounded-full bg-brand-ink px-1 text-[11px] font-bold text-white"
-                                            >{{ item.cantidad }}</span
-                                        >
-                                    </span>
-                                    <span class="min-w-0 flex-1 text-sm">
-                                        <span
-                                            class="line-clamp-2 font-medium"
-                                            >{{ item.nombre }}</span
-                                        >
-                                        <span
-                                            v-if="item.error"
-                                            class="block text-xs text-destructive"
-                                            >{{ item.error }}</span
-                                        >
-                                        <span
-                                            v-else-if="
-                                                item.modalidad_venta ===
-                                                'bajo_pedido'
-                                            "
-                                            class="block text-xs text-brand-teal-strong"
-                                            >Bajo pedido{{
-                                                item.tiempo_entrega_dias
-                                                    ? ` · ${item.tiempo_entrega_dias} días aprox.`
-                                                    : ''
-                                            }}</span
-                                        >
-                                    </span>
-                                    <span
-                                        class="text-sm font-semibold tabular-nums"
-                                        >{{ moneda(item.subtotal) }}</span
-                                    >
-                                </li>
-                            </ul>
-
-                            <div
-                                :class="
-                                    recalculando
-                                        ? 'opacity-50 transition-opacity'
-                                        : 'transition-opacity'
-                                "
-                            >
-                                <ResumenTotales
-                                    :subtotal="resumen.subtotal"
-                                    :descuento-ofertas="
-                                        resumen.descuento_ofertas
-                                    "
-                                    :descuento-cupon="resumen.descuento_cupon"
-                                    :cupon-codigo="cupon?.codigo"
-                                    :envio="resumen.envio"
-                                    :envio-por-cotizar="
-                                        resumen.envio_por_cotizar
-                                    "
-                                    :recoger-en-tienda="!esDomicilio"
-                                    :total="resumen.total"
+                                <h2 class="font-display text-xl font-bold">
+                                    Revisa tu pedido
+                                </h2>
+                                <Loader2
+                                    v-if="recalculando"
+                                    class="ml-auto size-5 animate-spin text-brand-green"
+                                    aria-label="Actualizando totales"
                                 />
                             </div>
-
                             <div
-                                v-if="envioPorCotizar"
-                                class="mt-4 flex gap-2 rounded-2xl bg-warning/10 p-3 text-sm"
-                                role="note"
+                                class="h-0.5 w-full overflow-hidden transition-opacity duration-300"
+                                :class="
+                                    recalculando ? 'opacity-100' : 'opacity-0'
+                                "
+                                aria-hidden="true"
                             >
-                                <Info
-                                    class="mt-0.5 size-4 shrink-0 text-warning"
-                                    aria-hidden="true"
+                                <div
+                                    class="barra-carga h-full w-1/3 bg-brand-gradient"
                                 />
-                                <p>
-                                    <strong
-                                        >El costo de envío se cotiza por
-                                        separado.</strong
+                            </div>
+                            <div class="p-5 pt-4">
+                                <ul
+                                    class="mb-4 max-h-72 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]"
+                                >
+                                    <li
+                                        v-for="item in items"
+                                        :key="item.producto_id"
+                                        class="flex gap-3 rounded-xl p-1 transition-colors hover:bg-brand-green-soft/60"
                                     >
-                                    Te enviaremos opciones de paquetería con
-                                    precio y tiempo para que elijas según qué
-                                    tanto te urja. No realices ningún pago hasta
-                                    elegir tu envío y ver el total final.
+                                        <span
+                                            class="relative size-14 shrink-0 overflow-hidden rounded-lg bg-brand-green-soft"
+                                        >
+                                            <img
+                                                v-if="item.imagen"
+                                                :src="item.imagen"
+                                                :alt="item.nombre"
+                                                class="size-full object-cover"
+                                                loading="lazy"
+                                            />
+                                            <ImageOff
+                                                v-else
+                                                class="m-auto mt-4 size-5 text-muted-foreground"
+                                                aria-hidden="true"
+                                            />
+                                            <span
+                                                class="absolute top-0.5 right-0.5 flex min-w-5 items-center justify-center rounded-full bg-brand-deep px-1 text-[11px] font-bold text-white shadow"
+                                                >{{ item.cantidad }}</span
+                                            >
+                                        </span>
+                                        <span class="min-w-0 flex-1 text-sm">
+                                            <span
+                                                class="line-clamp-2 font-medium"
+                                                >{{ item.nombre }}</span
+                                            >
+                                            <span
+                                                v-if="item.error"
+                                                class="block text-xs text-destructive"
+                                                >{{ item.error }}</span
+                                            >
+                                            <span
+                                                v-else-if="
+                                                    item.modalidad_venta ===
+                                                    'bajo_pedido'
+                                                "
+                                                class="block text-xs text-brand-teal-strong"
+                                                >Bajo pedido{{
+                                                    item.tiempo_entrega_dias
+                                                        ? ` · ${item.tiempo_entrega_dias} días aprox.`
+                                                        : ''
+                                                }}</span
+                                            >
+                                        </span>
+                                        <span
+                                            class="text-sm font-semibold tabular-nums"
+                                            >{{ moneda(item.subtotal) }}</span
+                                        >
+                                    </li>
+                                </ul>
+
+                                <div
+                                    :class="
+                                        recalculando
+                                            ? 'opacity-50 transition duration-300'
+                                            : 'transition duration-300'
+                                    "
+                                >
+                                    <ResumenTotales
+                                        :subtotal="resumen.subtotal"
+                                        :descuento-ofertas="
+                                            resumen.descuento_ofertas
+                                        "
+                                        :descuento-cupon="
+                                            resumen.descuento_cupon
+                                        "
+                                        :cupon-codigo="cupon?.codigo"
+                                        :envio="resumen.envio"
+                                        :envio-por-cotizar="
+                                            resumen.envio_por_cotizar
+                                        "
+                                        :recoger-en-tienda="!esDomicilio"
+                                        :total="resumen.total"
+                                    />
+                                </div>
+
+                                <div
+                                    v-if="envioPorCotizar"
+                                    class="mt-4 flex gap-2 rounded-2xl bg-warning/10 p-3 text-sm"
+                                    role="note"
+                                >
+                                    <Info
+                                        class="mt-0.5 size-4 shrink-0 text-warning"
+                                        aria-hidden="true"
+                                    />
+                                    <p>
+                                        <strong
+                                            >El costo de envío se cotiza por
+                                            separado.</strong
+                                        >
+                                        Te enviaremos opciones de paquetería con
+                                        precio y tiempo para que elijas según
+                                        qué tanto te urja. No realices ningún
+                                        pago hasta elegir tu envío y ver el
+                                        total final.
+                                    </p>
+                                </div>
+
+                                <div
+                                    v-if="errores.length || cupon_error"
+                                    class="mt-4 flex gap-2 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive"
+                                    role="alert"
+                                >
+                                    <AlertTriangle
+                                        class="mt-0.5 size-4 shrink-0"
+                                        aria-hidden="true"
+                                    />
+                                    <div>
+                                        <p v-for="e in errores" :key="e">
+                                            {{ e }}
+                                        </p>
+                                        <p v-if="cupon_error">
+                                            {{ cupon_error }}
+                                        </p>
+                                        <Link
+                                            :href="carrito.index.url()"
+                                            class="mt-1 inline-block font-semibold underline"
+                                            >Ir al carrito para corregir</Link
+                                        >
+                                    </div>
+                                </div>
+
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    class="mt-5 h-12 w-full rounded-full text-base font-bold shadow-brand-sm hover:-translate-y-0.5 hover:shadow-brand disabled:translate-y-0"
+                                    :disabled="!puedeConfirmar"
+                                >
+                                    <Loader2
+                                        v-if="form.processing"
+                                        class="animate-spin"
+                                        aria-hidden="true"
+                                    />
+                                    {{
+                                        form.processing
+                                            ? 'Registrando tu pedido…'
+                                            : 'Confirmar pedido'
+                                    }}
+                                </Button>
+                                <p
+                                    class="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground"
+                                >
+                                    <ShieldCheck
+                                        class="size-4 shrink-0 text-brand-green-strong"
+                                        aria-hidden="true"
+                                    />
+                                    No cobramos nada en línea. Al confirmar
+                                    apartamos tus productos y te mostramos cómo
+                                    pagar.
+                                </p>
+                                <p class="mt-1 text-xs text-muted-foreground">
+                                    {{ piezas }} pieza{{
+                                        piezas === 1 ? '' : 's'
+                                    }}
+                                    · método:
+                                    {{ metodoElegido?.nombre ?? 'sin elegir' }}
                                 </p>
                             </div>
+                        </div>
 
+                        <Link
+                            :href="carrito.index.url()"
+                            class="group inline-flex items-center gap-1 text-sm font-semibold text-brand-green-strong transition-colors hover:text-brand-deep"
+                        >
+                            <ArrowLeft
+                                class="size-4 transition-transform group-hover:-translate-x-1"
+                                aria-hidden="true"
+                            />
+                            Volver al carrito
+                        </Link>
+                    </aside>
+
+                    <!-- Barra fija en móvil: total + confirmar -->
+                    <div
+                        class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgb(20_51_43/0.35)] backdrop-blur lg:hidden"
+                    >
+                        <div
+                            class="mx-auto mb-2 h-1 max-w-2xl overflow-hidden rounded-full bg-brand-deep/10"
+                            aria-hidden="true"
+                        >
                             <div
-                                v-if="errores.length || cupon_error"
-                                class="mt-4 flex gap-2 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive"
-                                role="alert"
-                            >
-                                <AlertTriangle
-                                    class="mt-0.5 size-4 shrink-0"
-                                    aria-hidden="true"
-                                />
-                                <div>
-                                    <p v-for="e in errores" :key="e">{{ e }}</p>
-                                    <p v-if="cupon_error">{{ cupon_error }}</p>
-                                    <Link
-                                        :href="carrito.index.url()"
-                                        class="mt-1 inline-block font-semibold underline"
-                                        >Ir al carrito para corregir</Link
-                                    >
-                                </div>
+                                class="h-full rounded-full bg-brand-gradient transition-[width] duration-700 motion-reduce:transition-none"
+                                :style="{
+                                    width: `${Math.max(progresoCheckout, 6)}%`,
+                                }"
+                            />
+                        </div>
+                        <div class="mx-auto flex max-w-2xl items-center gap-3">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[11px] text-muted-foreground">
+                                    Total{{
+                                        envioPorCotizar ? ' (sin envío)' : ''
+                                    }}
+                                    · {{ piezas }} pieza{{
+                                        piezas === 1 ? '' : 's'
+                                    }}
+                                </p>
+                                <p
+                                    class="flex items-center gap-1.5 font-display text-xl leading-tight font-extrabold text-brand-deep tabular-nums"
+                                >
+                                    {{ moneda(resumen.total) }}
+                                    <Loader2
+                                        v-if="recalculando"
+                                        class="size-4 animate-spin text-brand-green-strong"
+                                        aria-hidden="true"
+                                    />
+                                </p>
                             </div>
-
                             <Button
                                 type="submit"
                                 size="lg"
-                                class="mt-5 h-12 w-full rounded-full text-base font-bold"
+                                class="h-11 shrink-0 rounded-full px-5 font-bold shadow-brand-sm"
                                 :disabled="!puedeConfirmar"
                             >
                                 <Loader2
@@ -976,40 +1173,37 @@ function textoDireccion(d: Direccion): string {
                                     class="animate-spin"
                                     aria-hidden="true"
                                 />
+                                <BadgeCheck v-else aria-hidden="true" />
                                 {{
-                                    form.processing
-                                        ? 'Registrando tu pedido…'
-                                        : 'Confirmar pedido'
+                                    form.processing ? 'Enviando…' : 'Confirmar'
                                 }}
                             </Button>
-                            <p
-                                class="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground"
-                            >
-                                <ShieldCheck
-                                    class="size-4 shrink-0 text-brand-green-strong"
-                                    aria-hidden="true"
-                                />
-                                No cobramos nada en línea. Al confirmar
-                                apartamos tus productos y te mostramos cómo
-                                pagar.
-                            </p>
-                            <p class="mt-1 text-xs text-muted-foreground">
-                                {{ piezas }} pieza{{ piezas === 1 ? '' : 's' }}
-                                · método:
-                                {{ metodoElegido?.nombre ?? 'sin elegir' }}
-                            </p>
                         </div>
-
-                        <Link
-                            :href="carrito.index.url()"
-                            class="inline-flex items-center gap-1 text-sm font-semibold text-brand-green-strong hover:underline"
-                        >
-                            <ArrowLeft class="size-4" aria-hidden="true" />
-                            Volver al carrito
-                        </Link>
-                    </aside>
+                    </div>
                 </form>
             </div>
         </section>
     </PublicLayout>
 </template>
+
+<style scoped>
+@keyframes barra-carga {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(300%);
+    }
+}
+
+.barra-carga {
+    animation: barra-carga 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .barra-carga {
+        animation: none;
+        width: 100%;
+    }
+}
+</style>

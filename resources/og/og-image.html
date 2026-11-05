@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es-MX">
+    <head>
+        <meta charset="utf-8" />
+        <style>
+            @font-face {
+                font-family: 'Baloo 2';
+                font-weight: 800;
+                src: url('{{FUENTE:Baloo2-ExtraBold.ttf}}');
+            }
+            @font-face {
+                font-family: 'Montserrat';
+                font-weight: 600;
+                src: url('{{FUENTE:Montserrat-SemiBold.ttf}}');
+            }
+            @font-face {
+                font-family: 'Montserrat';
+                font-weight: 700;
+                src: url('{{FUENTE:Montserrat-Bold.ttf}}');
+            }
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            html,
+            body {
+                width: 1200px;
+                height: 630px;
+                overflow: hidden;
+            }
+            body {
+                position: relative;
+                background:
+                    radial-gradient(
+                        circle at 50% 46%,
+                        rgba(115, 200, 58, 0.3),
+                        transparent 46%
+                    ),
+                    radial-gradient(
+                        circle at 8% 100%,
+                        rgba(100, 203, 212, 0.3),
+                        transparent 32%
+                    ),
+                    radial-gradient(
+                        circle at 94% 0%,
+                        rgba(115, 200, 58, 0.26),
+                        transparent 30%
+                    ),
+                    linear-gradient(
+                        140deg,
+                        #22573f 0%,
+                        #1a4434 48%,
+                        #12302a 100%
+                    );
+                font-family: 'Montserrat', sans-serif;
+                color: #fff;
+            }
+            /* Patrón de rombos de la marca */
+            .rombos {
+                position: absolute;
+                inset: 0;
+                opacity: 0.13;
+                background-image:
+                    linear-gradient(45deg, #fff 1.5px, transparent 1.5px),
+                    linear-gradient(-45deg, #fff 1.5px, transparent 1.5px);
+                background-size: 46px 46px;
+                -webkit-mask-image: radial-gradient(
+                    ellipse at center,
+                    transparent 22%,
+                    #000 62%
+                );
+            }
+            .franja {
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: 12px;
+                background: linear-gradient(90deg, #73c83a, #64cbd4);
+            }
+            .anillo {
+                position: absolute;
+                border-radius: 50%;
+                border: 2px solid rgba(255, 255, 255, 0.1);
+            }
+            .a1 {
+                width: 520px;
+                height: 520px;
+                left: -230px;
+                top: -160px;
+            }
+            .a2 {
+                width: 420px;
+                height: 420px;
+                right: -170px;
+                bottom: -150px;
+                border-color: rgba(100, 203, 212, 0.22);
+            }
+            .rombo {
+                position: absolute;
+                width: 26px;
+                height: 26px;
+                transform: rotate(45deg);
+                border-radius: 5px;
+            }
+            .r1 {
+                left: 120px;
+                top: 410px;
+                background: #73c83a;
+                opacity: 0.85;
+            }
+            .r2 {
+                right: 150px;
+                top: 120px;
+                background: #64cbd4;
+                opacity: 0.9;
+                width: 20px;
+                height: 20px;
+            }
+            .r3 {
+                right: 110px;
+                top: 470px;
+                border: 3px solid #73c83a;
+                opacity: 0.7;
+            }
+            .r4 {
+                left: 170px;
+                top: 140px;
+                border: 3px solid #64cbd4;
+                opacity: 0.7;
+                width: 18px;
+                height: 18px;
+            }
+
+            /* Zona segura central: x 270–930 */
+            .zona {
+                position: absolute;
+                left: 268px;
+                top: 40px;
+                width: 640px;
+                height: 540px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+            }
+            .mascota {
+                position: relative;
+                width: 290px;
+                height: 520px;
+                flex: none;
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+            }
+            .mascota::before {
+                content: '';
+                position: absolute;
+                left: 6px;
+                right: 6px;
+                bottom: 34px;
+                aspect-ratio: 1;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #73c83a 0%, #64cbd4 100%);
+                box-shadow:
+                    0 0 0 10px rgba(255, 255, 255, 0.08),
+                    0 30px 60px rgba(0, 0, 0, 0.35);
+            }
+            .mascota img {
+                position: relative;
+                width: 290px;
+                height: auto;
+                filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.35));
+            }
+            .texto {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .logo {
+                width: 326px;
+                height: auto;
+                filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.3));
+            }
+            .pastilla {
+                margin-top: 22px;
+                padding: 7px 16px 6px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.12);
+                border: 1.5px solid rgba(255, 255, 255, 0.28);
+                font-weight: 700;
+                font-size: 17px;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: #d9f6b8;
+            }
+            h1 {
+                margin-top: 14px;
+                font-family: 'Baloo 2', sans-serif;
+                font-weight: 800;
+                font-size: 39px;
+                line-height: 1.05;
+                white-space: nowrap;
+                letter-spacing: -0.01em;
+            }
+            h1 span {
+                background: linear-gradient(90deg, #8ee04f, #7fe0e8);
+                -webkit-background-clip: text;
+                color: transparent;
+            }
+            .url {
+                margin-top: 22px;
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                padding: 11px 20px;
+                border-radius: 999px;
+                background: #fff;
+                color: #14332b;
+                font-weight: 700;
+                font-size: 20px;
+                box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+            }
+            .url i {
+                width: 12px;
+                height: 12px;
+                border-radius: 3px;
+                transform: rotate(45deg);
+                background: linear-gradient(135deg, #73c83a, #64cbd4);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="rombos"></div>
+        <div class="anillo a1"></div>
+        <div class="anillo a2"></div>
+        <div class="rombo r1"></div>
+        <div class="rombo r2"></div>
+        <div class="rombo r3"></div>
+        <div class="rombo r4"></div>
+
+        <div class="zona">
+            <div class="mascota"><img src="{{MASCOTA}}" alt="" /></div>
+            <div class="texto">
+                <img class="logo" src="{{LOGO}}" alt="Mr.lana" />
+                <div class="pastilla">Tienda en línea</div>
+                <h1>Muebles y artículos<br /><span>para tu hogar</span></h1>
+                <div class="url"><i></i>tienda.mr-lana.com</div>
+            </div>
+        </div>
+        <div class="franja"></div>
+    </body>
+</html>

@@ -214,7 +214,7 @@ function costo(r: Regla): string {
 <template>
     <Head title="Reglas de envío" />
 
-    <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
+    <div class="flex w-full flex-col gap-6 p-4 md:p-6">
         <PageHeader
             eyebrow="Administración"
             title="Reglas de envío"
@@ -254,12 +254,15 @@ function costo(r: Regla): string {
             >
         </EmptyState>
 
-        <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div
+            v-else
+            class="grid stagger-children gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+        >
             <article
                 v-for="r in reglas"
                 :key="r.id"
                 :class="[
-                    'flex flex-col gap-4 rounded-2xl border bg-card p-4 transition',
+                    'flex hover-lift flex-col gap-4 rounded-2xl border bg-card p-4',
                     !r.activo && 'opacity-70',
                 ]"
             >

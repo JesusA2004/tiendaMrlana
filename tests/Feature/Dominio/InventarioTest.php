@@ -34,14 +34,14 @@ it('reserva stock al crear el pedido y lo libera al cancelar', function () {
 
     expect($p->fresh()->stock)->toBe(2)
         ->and($pedido->stock_reservado)->toBeTrue()
-        ->and(InventarioMovimiento::where('tipo', 'venta')->sum('cantidad'))->toBe(-3);
+        ->and((int) InventarioMovimiento::where('tipo', 'venta')->sum('cantidad'))->toBe(-3);
 
     app(PedidoWorkflow::class)->cancelar($pedido, adminTienda(), 'Cliente desistió');
 
     expect($p->fresh()->stock)->toBe(5)
         ->and($pedido->fresh()->stock_reservado)->toBeFalse()
         ->and($pedido->fresh()->estatus)->toBe('cancelado')
-        ->and(InventarioMovimiento::where('tipo', 'liberacion')->sum('cantidad'))->toBe(3);
+        ->and((int) InventarioMovimiento::where('tipo', 'liberacion')->sum('cantidad'))->toBe(3);
 });
 
 it('bajo pedido no descuenta stock', function () {

@@ -79,6 +79,10 @@ const cifras = computed(() =>
                 <h1
                     class="mt-6 animate-in font-display text-[2.15rem] leading-[1.02] font-extrabold tracking-tight text-balance duration-700 fade-in slide-in-from-bottom-4 sm:text-5xl lg:text-6xl"
                 >
+                    <span
+                        class="mb-3 block font-sans text-xs font-bold tracking-[0.18em] text-brand-green uppercase sm:text-sm"
+                        >Tienda Mr Lana</span
+                    >
                     <template v-if="eslogan">{{ eslogan }}</template>
                     <template v-else>
                         Muebles y artículos para tu
@@ -97,7 +101,7 @@ const cifras = computed(() =>
                 >
                     <Link
                         :href="urls.catalogo"
-                        class="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-7 text-[15px] font-semibold text-primary-foreground shadow-[0_10px_30px_-10px_rgba(115,200,58,0.8)] transition-transform hover:scale-[1.03] active:scale-95"
+                        class="group shine inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-7 text-[15px] font-semibold text-primary-foreground shadow-[0_10px_30px_-10px_rgba(115,200,58,0.8)] transition-transform hover:scale-[1.03] active:scale-95 motion-reduce:hover:scale-100"
                     >
                         Explorar catálogo
                         <ArrowRight

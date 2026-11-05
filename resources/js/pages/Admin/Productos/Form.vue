@@ -204,7 +204,7 @@ const vistaSeo = computed(() => ({
     <Head :title="producto ? producto.nombre : 'Nuevo producto'" />
 
     <form
-        class="mx-auto w-full max-w-7xl space-y-6 p-4 pb-0 md:p-6 md:pb-0"
+        class="w-full animate-page-in space-y-6 p-4 pb-0 md:p-6 md:pb-0"
         novalidate
         @submit.prevent="guardar"
     >
@@ -259,11 +259,13 @@ const vistaSeo = computed(() => ({
             </div>
         </header>
 
-        <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div class="grid gap-6 lg:grid-cols-3">
             <!-- Columna principal -->
-            <div class="space-y-6">
+            <div class="stagger-children space-y-6 lg:col-span-2">
                 <!-- Datos generales -->
-                <section class="rounded-2xl border bg-card p-5 md:p-6">
+                <section
+                    class="surface-card rounded-2xl border bg-card p-4 transition-shadow duration-300 hover:shadow-brand md:p-6"
+                >
                     <h2 class="font-display text-xl font-semibold">
                         Datos generales
                     </h2>
@@ -387,7 +389,9 @@ const vistaSeo = computed(() => ({
                 </section>
 
                 <!-- Precio -->
-                <section class="rounded-2xl border bg-card p-5 md:p-6">
+                <section
+                    class="surface-card rounded-2xl border bg-card p-4 transition-shadow duration-300 hover:shadow-brand md:p-6"
+                >
                     <h2 class="font-display text-xl font-semibold">Precio</h2>
                     <div class="mt-4 grid gap-4 md:grid-cols-3">
                         <div class="grid gap-2">
@@ -466,7 +470,9 @@ const vistaSeo = computed(() => ({
                 </section>
 
                 <!-- Venta y disponibilidad -->
-                <section class="rounded-2xl border bg-card p-5 md:p-6">
+                <section
+                    class="surface-card rounded-2xl border bg-card p-4 transition-shadow duration-300 hover:shadow-brand md:p-6"
+                >
                     <h2 class="font-display text-xl font-semibold">
                         Venta y disponibilidad
                     </h2>
@@ -570,7 +576,9 @@ const vistaSeo = computed(() => ({
                 </section>
 
                 <!-- Ficha técnica -->
-                <section class="rounded-2xl border bg-card p-5 md:p-6">
+                <section
+                    class="surface-card rounded-2xl border bg-card p-4 transition-shadow duration-300 hover:shadow-brand md:p-6"
+                >
                     <h2 class="font-display text-xl font-semibold">
                         Ficha técnica
                     </h2>
@@ -670,7 +678,9 @@ const vistaSeo = computed(() => ({
                 </section>
 
                 <!-- Imágenes -->
-                <section class="rounded-2xl border bg-card p-5 md:p-6">
+                <section
+                    class="surface-card rounded-2xl border bg-card p-4 transition-shadow duration-300 hover:shadow-brand md:p-6"
+                >
                     <h2 class="font-display text-xl font-semibold">Imágenes</h2>
                     <p class="mt-1 text-sm text-muted-foreground">
                         La primera marcada como principal es la portada del
@@ -695,7 +705,9 @@ const vistaSeo = computed(() => ({
                 </section>
 
                 <!-- SEO -->
-                <section class="rounded-2xl border bg-card p-5 md:p-6">
+                <section
+                    class="surface-card rounded-2xl border bg-card p-4 transition-shadow duration-300 hover:shadow-brand md:p-6"
+                >
                     <h2 class="font-display text-xl font-semibold">SEO</h2>
                     <div class="mt-4 grid gap-4">
                         <div class="grid gap-2">
@@ -729,7 +741,7 @@ const vistaSeo = computed(() => ({
                             aria-label="Vista previa en buscadores"
                         >
                             <p
-                                class="line-clamp-1 text-base font-medium text-[#1a0dab] dark:text-[#8ab4f8]"
+                                class="line-clamp-1 text-base font-medium text-[#1a0dab]"
                             >
                                 {{ vistaSeo.titulo }} - Tienda Mr Lana
                             </p>
@@ -750,7 +762,7 @@ const vistaSeo = computed(() => ({
                 <!-- Zona de peligro -->
                 <section
                     v-if="producto"
-                    class="flex flex-col gap-3 rounded-2xl border border-destructive/30 p-5 sm:flex-row sm:items-center sm:justify-between"
+                    class="flex flex-col gap-3 rounded-2xl border border-destructive/30 p-4 transition-colors duration-300 hover:bg-destructive/5 sm:flex-row sm:items-center sm:justify-between md:p-6"
                 >
                     <div>
                         <h2 class="font-semibold">
@@ -780,10 +792,12 @@ const vistaSeo = computed(() => ({
             </div>
 
             <!-- Columna lateral -->
-            <aside class="space-y-6 lg:sticky lg:top-4 lg:self-start">
+            <aside
+                class="animate-fade-up space-y-6 lg:sticky lg:top-4 lg:self-start"
+            >
                 <section
                     v-if="producto"
-                    class="overflow-hidden rounded-2xl border bg-card"
+                    class="overflow-hidden rounded-2xl border bg-card shadow-brand transition-shadow duration-300"
                     aria-labelledby="titulo-publicacion"
                 >
                     <div class="bg-brand-deep-pattern px-5 py-4 text-white">
@@ -802,7 +816,7 @@ const vistaSeo = computed(() => ({
 
                         <p
                             v-if="form.isDirty"
-                            class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                            class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"
                         >
                             Tienes cambios sin guardar. Guárdalos para
                             actualizar la lista de requisitos.
@@ -876,7 +890,7 @@ const vistaSeo = computed(() => ({
 
                 <section
                     v-if="producto"
-                    class="rounded-2xl border bg-card p-5"
+                    class="rounded-2xl border bg-card p-5 transition-shadow duration-300 hover:shadow-brand"
                     aria-labelledby="titulo-inventario"
                 >
                     <div class="flex items-center justify-between">
@@ -959,9 +973,7 @@ const vistaSeo = computed(() => ({
         <div
             class="sticky bottom-0 z-30 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6"
         >
-            <div
-                class="mx-auto flex max-w-7xl items-center justify-between gap-3"
-            >
+            <div class="flex items-center justify-between gap-3">
                 <p class="hidden text-sm text-muted-foreground sm:block">
                     {{ form.isDirty ? 'Cambios sin guardar' : 'Todo guardado' }}
                 </p>

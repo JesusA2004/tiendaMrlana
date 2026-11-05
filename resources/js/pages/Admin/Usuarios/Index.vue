@@ -151,7 +151,7 @@ function eliminar(u: UsuarioFila) {
             </Button>
         </PageHeader>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div class="grid stagger-children grid-cols-1 gap-3 sm:grid-cols-3">
             <KpiCard
                 label="Administradores"
                 :value="conteos.admin"
@@ -210,7 +210,7 @@ function eliminar(u: UsuarioFila) {
         <template v-else>
             <!-- Escritorio -->
             <div class="hidden overflow-hidden rounded-2xl border md:block">
-                <table class="w-full text-sm">
+                <table class="w-full table-hover text-sm">
                     <thead
                         class="bg-surface/70 text-left text-xs text-muted-foreground uppercase"
                     >

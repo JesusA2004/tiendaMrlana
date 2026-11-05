@@ -57,8 +57,8 @@ class CrearAdmin extends Command
         $validador = Validator::make(
             ['nombre' => $nombre, 'correo' => $correo, 'password' => $password],
             [
-                'nombre' => ['required', 'string', 'max:255'],
-                'correo' => ['required', 'email', 'max:255'],
+                'nombre' => ['required', 'string', 'max:191'],
+                'correo' => ['required', 'email', 'max:191'],
                 'password' => ['required', 'string', Password::min(12)->mixedCase()->letters()->numbers()->symbols()],
             ],
             [],

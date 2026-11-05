@@ -183,7 +183,7 @@ function confirmar(): void {
 <template>
     <Head title="Marcas" />
 
-    <div class="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
+    <div class="w-full animate-page-in space-y-6 p-4 md:p-6">
         <header
             class="flex flex-col gap-4 rounded-2xl bg-brand-deep-pattern px-5 py-6 text-white md:flex-row md:items-end md:justify-between md:px-8"
         >
@@ -206,7 +206,7 @@ function confirmar(): void {
         </header>
 
         <section
-            class="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row"
+            class="flex animate-fade-up flex-col gap-3 surface-card rounded-xl border bg-card p-4 sm:flex-row"
             aria-label="Filtros"
         >
             <div class="relative flex-1">
@@ -240,27 +240,32 @@ function confirmar(): void {
             v-if="!marcas.data.length"
             class="rounded-2xl border border-dashed bg-surface/60 px-6 py-14 text-center"
         >
-            <BadgeCheck class="mx-auto size-10 text-brand-green" />
+            <BadgeCheck
+                class="mx-auto size-10 animate-scale-in text-brand-green-strong"
+            />
             <p class="mt-3 font-display text-xl font-semibold">
                 No hay marcas registradas
             </p>
         </div>
 
-        <ul v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul
+            v-else
+            class="grid stagger-children gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+        >
             <li
                 v-for="m in marcas.data"
                 :key="m.id"
-                class="flex flex-col gap-3 rounded-xl border bg-card p-4"
+                class="group flex hover-lift flex-col gap-3 surface-card rounded-xl border bg-card p-4"
             >
                 <div class="flex items-center gap-3">
                     <div
-                        class="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border bg-white"
+                        class="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border bg-white transition-shadow duration-300 group-hover:shadow-brand"
                     >
                         <img
                             v-if="m.logo"
                             :src="m.logo"
                             :alt="`Logo de ${m.nombre}`"
-                            class="size-full object-contain p-1"
+                            class="size-full object-contain p-1 transition-transform duration-500 group-hover:scale-105"
                             loading="lazy"
                         />
                         <span
@@ -270,7 +275,11 @@ function confirmar(): void {
                         >
                     </div>
                     <div class="min-w-0">
-                        <p class="truncate font-semibold">{{ m.nombre }}</p>
+                        <p
+                            class="truncate font-semibold transition-colors group-hover:text-brand-green-strong"
+                        >
+                            {{ m.nombre }}
+                        </p>
                         <p class="text-xs text-muted-foreground">
                             /{{ m.slug }}
                         </p>
@@ -285,7 +294,7 @@ function confirmar(): void {
                         :href="
                             productosIndex({ query: { marca_id: m.id } }).url
                         "
-                        class="text-xs font-semibold text-brand-green-strong hover:underline"
+                        class="link-underline text-xs font-semibold text-brand-green-strong"
                         >{{ m.productos_count }} productos</a
                     >
                 </div>

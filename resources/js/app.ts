@@ -1,5 +1,4 @@
 import { createInertiaApp } from '@inertiajs/vue3';
-import { initializeTheme } from '@/composables/useAppearance';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
@@ -8,7 +7,13 @@ import { initializeFlashToast } from '@/lib/flashToast';
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    // La tienda pública (SeoHead.vue) ya manda el <title> completo con la marca ("… | Mr Lana Tienda").
+    title: (title) =>
+        !title
+            ? appName
+            : title.includes(' | ')
+              ? title
+              : `${title} - ${appName}`,
     layout: (name) => {
         switch (true) {
             case name === 'Welcome':
@@ -27,12 +32,9 @@ createInertiaApp({
         }
     },
     progress: {
-        color: '#4B5563',
+        color: '#73C83A',
     },
 });
-
-// This will set light / dark mode on page load...
-initializeTheme();
 
 // This will listen for flash toast data from the server...
 initializeFlashToast();

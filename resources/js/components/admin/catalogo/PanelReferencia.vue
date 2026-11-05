@@ -11,7 +11,7 @@ defineProps<{
 
 <template>
     <section
-        class="overflow-hidden rounded-2xl border border-dashed border-brand-teal/50 bg-brand-teal-soft/50"
+        class="animate-fade-up overflow-hidden rounded-2xl border border-dashed border-brand-teal/50 bg-brand-teal-soft/50 transition-shadow duration-300 hover:shadow-brand"
         aria-labelledby="panel-referencia"
     >
         <header

@@ -38,10 +38,10 @@ const siguiente = computed(() => props.links[props.links.length - 1]);
                 :is="anterior?.url ? Link : 'span'"
                 :href="anterior?.url ?? undefined"
                 preserve-scroll
-                class="inline-flex size-9 items-center justify-center rounded-md border text-sm transition"
+                class="inline-flex size-9 items-center justify-center rounded-md border text-sm transition-all duration-200 hover:-translate-y-0.5"
                 :class="
                     anterior?.url
-                        ? 'hover:bg-muted'
+                        ? 'hover:border-brand-green hover:bg-brand-green-soft hover:text-brand-green-strong'
                         : 'pointer-events-none opacity-40'
                 "
                 aria-label="Página anterior"
@@ -59,11 +59,11 @@ const siguiente = computed(() => props.links[props.links.length - 1]);
                     v-else
                     :href="link.url"
                     preserve-scroll
-                    class="hidden size-9 items-center justify-center rounded-md border text-sm font-medium transition sm:inline-flex"
+                    class="hidden size-9 items-center justify-center rounded-md border text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 sm:inline-flex"
                     :class="
                         link.active
                             ? 'border-brand-deep bg-brand-deep text-white'
-                            : 'hover:bg-muted'
+                            : 'hover:border-brand-green hover:bg-brand-green-soft hover:text-brand-green-strong'
                     "
                     :aria-current="link.active ? 'page' : undefined"
                 >
@@ -75,10 +75,10 @@ const siguiente = computed(() => props.links[props.links.length - 1]);
                 :is="siguiente?.url ? Link : 'span'"
                 :href="siguiente?.url ?? undefined"
                 preserve-scroll
-                class="inline-flex size-9 items-center justify-center rounded-md border text-sm transition"
+                class="inline-flex size-9 items-center justify-center rounded-md border text-sm transition-all duration-200 hover:-translate-y-0.5"
                 :class="
                     siguiente?.url
-                        ? 'hover:bg-muted'
+                        ? 'hover:border-brand-green hover:bg-brand-green-soft hover:text-brand-green-strong'
                         : 'pointer-events-none opacity-40'
                 "
                 aria-label="Página siguiente"

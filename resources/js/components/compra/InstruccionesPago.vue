@@ -29,14 +29,18 @@ defineProps<{
             !pedido.envio_esperando_eleccion &&
             !pedido.es_terminal
         "
-        class="flex gap-3 rounded-3xl border border-warning/30 bg-warning/10 p-5"
+        class="flex gap-4 rounded-3xl border border-warning/30 bg-card p-5 shadow-brand-sm"
     >
-        <Clock3
-            class="mt-0.5 size-6 shrink-0 text-warning"
-            aria-hidden="true"
-        />
+        <span
+            class="flex size-11 shrink-0 items-center justify-center rounded-full bg-warning/12"
+        >
+            <Clock3
+                class="size-6 text-warning motion-safe:animate-pulse"
+                aria-hidden="true"
+            />
+        </span>
         <div>
-            <h2 class="font-display text-lg font-bold">
+            <h2 class="font-display text-lg font-bold text-brand-deep">
                 Estamos cotizando tu envío
             </h2>
             <p class="mt-1 text-sm">
@@ -48,60 +52,81 @@ defineProps<{
         </div>
     </section>
 
-    <!-- Transferencia -->
+    <!-- Transferencia: tarjeta destacada verde profundo -->
     <section
         v-else-if="instrucciones.banco"
-        class="overflow-hidden rounded-3xl border-2 border-brand-teal/60 bg-background"
+        class="relative overflow-hidden rounded-3xl bg-brand-deep-pattern text-white shadow-brand"
         aria-labelledby="titulo-transferencia"
     >
-        <div class="flex items-center gap-3 bg-brand-teal-soft/70 px-5 py-4">
-            <Building2
-                class="size-6 text-brand-teal-strong"
-                aria-hidden="true"
-            />
-            <h2
-                id="titulo-transferencia"
-                class="font-display text-lg font-bold"
+        <div
+            class="pointer-events-none absolute -top-20 -right-16 size-56 rounded-full bg-brand-green/25 blur-3xl"
+            aria-hidden="true"
+        />
+        <div
+            class="relative flex items-center gap-3 border-b border-white/10 px-5 py-4 sm:px-6"
+        >
+            <span
+                class="flex size-11 items-center justify-center rounded-full bg-brand-green text-brand-ink shadow-md"
             >
-                Paga por transferencia
-            </h2>
+                <Building2 class="size-5" aria-hidden="true" />
+            </span>
+            <div>
+                <h2
+                    id="titulo-transferencia"
+                    class="font-display text-xl font-bold"
+                >
+                    Paga por transferencia
+                </h2>
+                <p class="text-xs text-white/75">
+                    Copia los datos con un toque y transfiere desde tu banco.
+                </p>
+            </div>
         </div>
 
-        <div v-if="instrucciones.banco.configurado" class="space-y-4 p-5">
+        <div
+            v-if="instrucciones.banco.configurado"
+            class="relative space-y-4 p-5 sm:p-6"
+        >
             <dl class="grid gap-3 text-sm sm:grid-cols-2">
-                <div>
-                    <dt class="text-muted-foreground">Banco</dt>
+                <div class="rounded-2xl bg-white/8 p-3 ring-1 ring-white/10">
+                    <dt class="text-xs text-white/70">Banco</dt>
                     <dd class="font-semibold">
                         {{ instrucciones.banco.nombre }}
                     </dd>
                 </div>
-                <div>
-                    <dt class="text-muted-foreground">Beneficiario</dt>
+                <div class="rounded-2xl bg-white/8 p-3 ring-1 ring-white/10">
+                    <dt class="text-xs text-white/70">Beneficiario</dt>
                     <dd class="font-semibold">
                         {{ instrucciones.banco.beneficiario }}
                     </dd>
                 </div>
-                <div class="sm:col-span-2">
-                    <dt class="text-muted-foreground">CLABE interbancaria</dt>
-                    <dd class="mt-1 flex flex-wrap items-center gap-2">
+                <div
+                    class="rounded-2xl bg-white/10 p-3 ring-1 ring-brand-green/40 transition-colors hover:bg-white/15 sm:col-span-2"
+                >
+                    <dt class="text-xs text-white/70">CLABE interbancaria</dt>
+                    <dd class="mt-1 flex flex-wrap items-center gap-3">
                         <span
-                            class="rounded-lg bg-surface px-3 py-1.5 font-mono text-base font-bold tracking-wider sm:text-lg"
+                            class="font-mono text-lg font-bold tracking-wider text-white sm:text-2xl"
                             >{{ agruparClabe(instrucciones.banco.clabe) }}</span
                         >
                         <CopiarTexto
                             :valor="instrucciones.banco.clabe ?? ''"
                             etiqueta="Copiar CLABE"
+                            tono="oscuro"
                         />
                     </dd>
                 </div>
-                <div v-if="instrucciones.banco.cuenta">
-                    <dt class="text-muted-foreground">Cuenta</dt>
+                <div
+                    v-if="instrucciones.banco.cuenta"
+                    class="rounded-2xl bg-white/8 p-3 ring-1 ring-white/10"
+                >
+                    <dt class="text-xs text-white/70">Cuenta</dt>
                     <dd class="font-mono font-semibold">
                         {{ instrucciones.banco.cuenta }}
                     </dd>
                 </div>
-                <div>
-                    <dt class="text-muted-foreground">Referencia / concepto</dt>
+                <div class="rounded-2xl bg-white/8 p-3 ring-1 ring-white/10">
+                    <dt class="text-xs text-white/70">Referencia / concepto</dt>
                     <dd class="mt-1 flex flex-wrap items-center gap-2">
                         <span class="font-mono font-bold">{{
                             instrucciones.banco.referencia
@@ -109,19 +134,26 @@ defineProps<{
                         <CopiarTexto
                             :valor="instrucciones.banco.referencia ?? ''"
                             etiqueta="Copiar"
+                            tono="oscuro"
                         />
                     </dd>
                 </div>
-                <div>
-                    <dt class="text-muted-foreground">Monto exacto</dt>
-                    <dd class="font-display text-xl font-extrabold">
+                <div
+                    class="rounded-2xl bg-brand-gradient p-3 text-brand-ink shadow-md"
+                >
+                    <dt class="text-xs font-semibold text-brand-ink/80">
+                        Monto exacto
+                    </dt>
+                    <dd
+                        class="font-display text-2xl font-extrabold tabular-nums"
+                    >
                         {{ moneda(pedido.saldo_pendiente || pedido.total) }}
                     </dd>
                 </div>
             </dl>
             <p
                 v-if="pedido.vence_en"
-                class="flex items-center gap-2 rounded-xl bg-warning/10 px-3 py-2 text-sm"
+                class="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm text-brand-ink"
             >
                 <CalendarClock
                     class="size-4 shrink-0 text-warning"
@@ -135,17 +167,17 @@ defineProps<{
             </p>
             <p
                 v-if="instrucciones.banco.indicaciones"
-                class="text-sm text-muted-foreground"
+                class="text-sm text-white/80"
             >
                 {{ instrucciones.banco.indicaciones }}
             </p>
-            <p v-if="instrucciones.texto" class="text-sm text-muted-foreground">
+            <p v-if="instrucciones.texto" class="text-sm text-white/80">
                 {{ instrucciones.texto }}
             </p>
         </div>
-        <div v-else class="flex gap-3 p-5 text-sm">
+        <div v-else class="relative flex gap-3 p-5 text-sm sm:p-6">
             <MessageCircle
-                class="mt-0.5 size-5 shrink-0 text-brand-teal-strong"
+                class="mt-0.5 size-5 shrink-0 text-brand-green"
                 aria-hidden="true"
             />
             <p>
@@ -160,14 +192,19 @@ defineProps<{
     <!-- Efectivo en tienda -->
     <section
         v-else-if="instrucciones.efectivo_presencial"
-        class="flex gap-3 rounded-3xl border border-brand-green/40 bg-brand-green-soft/50 p-5"
+        class="relative flex gap-4 overflow-hidden rounded-3xl border border-brand-green/40 bg-card p-5 shadow-brand-sm sm:p-6"
     >
-        <MapPin
-            class="mt-0.5 size-6 shrink-0 text-brand-green-strong"
+        <span
+            class="absolute inset-y-0 left-0 w-1.5 bg-brand-gradient"
             aria-hidden="true"
         />
+        <span
+            class="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-green-soft"
+        >
+            <MapPin class="size-6 text-brand-green-strong" aria-hidden="true" />
+        </span>
         <div class="text-sm">
-            <h2 class="font-display text-lg font-bold">
+            <h2 class="font-display text-lg font-bold text-brand-deep">
                 Paga en efectivo en nuestra tienda
             </h2>
             <p class="mt-1">
@@ -203,14 +240,24 @@ defineProps<{
     <!-- Contra entrega -->
     <section
         v-else-if="instrucciones.contra_entrega"
-        class="flex gap-3 rounded-3xl border border-brand-teal/50 bg-brand-teal-soft/50 p-5"
+        class="relative flex gap-4 overflow-hidden rounded-3xl border border-brand-teal/50 bg-card p-5 shadow-brand-sm sm:p-6"
     >
-        <HandCoins
-            class="mt-0.5 size-6 shrink-0 text-brand-teal-strong"
+        <span
+            class="absolute inset-y-0 left-0 w-1.5 bg-brand-teal"
             aria-hidden="true"
         />
+        <span
+            class="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-teal-soft"
+        >
+            <HandCoins
+                class="size-6 text-brand-teal-strong"
+                aria-hidden="true"
+            />
+        </span>
         <div class="text-sm">
-            <h2 class="font-display text-lg font-bold">Pagas al recibir</h2>
+            <h2 class="font-display text-lg font-bold text-brand-deep">
+                Pagas al recibir
+            </h2>
             <p class="mt-1">
                 Ten listo
                 <strong>{{ moneda(pedido.saldo_pendiente) }}</strong> en

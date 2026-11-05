@@ -501,11 +501,14 @@ const titulos: Record<
                 title="Sin efectivo pendiente"
                 description="Los pedidos con pago en tienda o contra entrega aparecerán aquí hasta que confirmes el cobro."
             />
-            <ul v-else class="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+            <ul
+                v-else
+                class="grid stagger-children gap-3 md:grid-cols-2 2xl:grid-cols-3"
+            >
                 <li
                     v-for="pago in pagos.data"
                     :key="pago.id"
-                    class="flex flex-col gap-3 rounded-2xl border bg-card p-4"
+                    class="flex hover-lift flex-col gap-3 rounded-2xl border bg-card p-4"
                 >
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
@@ -571,7 +574,7 @@ const titulos: Record<
                 <div
                     class="hidden overflow-hidden rounded-2xl border bg-card md:block"
                 >
-                    <table class="w-full text-sm">
+                    <table class="w-full table-hover text-sm">
                         <thead
                             class="bg-surface text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                         >

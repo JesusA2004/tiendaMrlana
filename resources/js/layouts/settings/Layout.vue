@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { Palette, ShieldCheck, UserRound } from 'lucide-vue-next';
+import { ShieldCheck, UserRound } from 'lucide-vue-next';
 import Heading from '@/components/Heading.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
-import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
@@ -20,11 +19,6 @@ const sidebarNavItems: NavItem[] = [
         href: editSecurity(),
         icon: ShieldCheck,
     },
-    {
-        title: 'Apariencia',
-        href: editAppearance(),
-        icon: Palette,
-    },
 ];
 
 const { isCurrentOrParentUrl } = useCurrentUrl();
@@ -34,13 +28,13 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
     <div class="px-4 py-6 sm:px-6">
         <Heading
             title="Mi cuenta"
-            description="Administra tu perfil, tu seguridad y la apariencia del sitio."
+            description="Administra tu perfil y la seguridad de tu cuenta."
         />
 
         <div class="flex flex-col gap-6 lg:flex-row lg:gap-10">
             <aside class="w-full lg:w-56 lg:shrink-0">
                 <nav
-                    class="flex flex-wrap gap-2 lg:flex-col lg:gap-1"
+                    class="flex stagger-children flex-wrap gap-2 lg:sticky lg:top-20 lg:flex-col lg:gap-1.5"
                     aria-label="Configuración de la cuenta"
                 >
                     <Link
@@ -51,15 +45,15 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
                             isCurrentOrParentUrl(item.href) ? 'page' : undefined
                         "
                         :class="[
-                            'inline-flex h-10 items-center gap-2.5 rounded-full px-4 text-sm font-medium transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none lg:w-full',
+                            'group inline-flex h-10 items-center gap-2.5 rounded-xl px-4 text-sm font-medium transition-[background-color,color,box-shadow,translate] duration-200 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none lg:w-full',
                             isCurrentOrParentUrl(item.href)
-                                ? 'bg-brand-green-soft font-semibold text-brand-green-strong'
-                                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                                ? 'bg-brand-gradient font-semibold text-brand-ink shadow-brand-sm'
+                                : 'bg-card/60 text-muted-foreground hover:translate-x-0.5 hover:bg-card hover:text-brand-deep hover:shadow-brand-sm',
                         ]"
                     >
                         <component
                             :is="item.icon"
-                            class="size-4 shrink-0"
+                            class="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110"
                             aria-hidden="true"
                         />
                         {{ item.title }}
@@ -67,8 +61,10 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
                 </nav>
             </aside>
 
-            <div class="min-w-0 flex-1 md:max-w-2xl">
-                <section class="space-y-6">
+            <div class="min-w-0 flex-1 md:max-w-3xl">
+                <section
+                    class="animate-fade-up space-y-6 surface-card p-5 sm:p-8"
+                >
                     <slot />
                 </section>
             </div>

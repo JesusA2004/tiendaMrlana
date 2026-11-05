@@ -208,11 +208,14 @@ function eliminar(): void {
 <template>
     <div class="space-y-5">
         <!-- Galería actual -->
-        <div v-if="lista.length" class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div
+            v-if="lista.length"
+            class="grid stagger-children grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
+        >
             <figure
                 v-for="(imagen, i) in lista"
                 :key="imagen.id"
-                class="group relative overflow-hidden rounded-xl border bg-muted/40"
+                class="group relative hover-lift overflow-hidden rounded-xl border bg-muted/40"
                 :class="[
                     imagen.principal
                         ? 'ring-2 ring-brand-green ring-offset-2 ring-offset-background'
@@ -227,7 +230,7 @@ function eliminar(): void {
                 <img
                     :src="imagen.url ?? ''"
                     :alt="`Imagen ${i + 1} del producto`"
-                    class="aspect-square w-full object-cover"
+                    class="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
                 />
                 <span
@@ -316,7 +319,7 @@ function eliminar(): void {
             @drop.prevent="soltar"
         >
             <ImagePlus
-                class="mx-auto mb-2 size-8 text-brand-deep dark:text-brand-green"
+                class="mx-auto mb-2 size-8 text-brand-deep"
                 aria-hidden="true"
             />
             <p class="text-sm font-semibold">
@@ -350,7 +353,7 @@ function eliminar(): void {
         </ul>
 
         <div v-if="previas.length" class="space-y-4 rounded-xl border p-4">
-            <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            <div class="grid stagger-children grid-cols-3 gap-2 sm:grid-cols-5">
                 <div
                     v-for="(previa, i) in previas"
                     :key="previa.url"
@@ -359,11 +362,11 @@ function eliminar(): void {
                     <img
                         :src="previa.url"
                         :alt="previa.archivo.name"
-                        class="aspect-square w-full rounded-lg object-cover"
+                        class="aspect-square w-full animate-scale-in rounded-lg object-cover"
                     />
                     <button
                         type="button"
-                        class="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full bg-foreground text-background shadow"
+                        class="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full bg-foreground text-background shadow transition-transform hover:scale-110 hover:bg-destructive"
                         :aria-label="`Quitar ${previa.archivo.name}`"
                         @click="quitarPrevia(i)"
                     >

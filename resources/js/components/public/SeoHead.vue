@@ -15,9 +15,10 @@ import type { SeoProps } from './types';
 const page = usePage<{ seo?: SeoProps | null }>();
 const seo = computed(() => page.props.seo ?? null);
 
-// Inertia inserta el <title> como HTML sin escapar: se escapa aquí (el navegador lo decodifica).
+// <title> completo ("Mr Lana | Tienda en línea…" o "{Página} | Mr Lana Tienda"); app.ts no le
+// añade sufijo porque ya contiene " | ". Inertia lo inserta sin escapar: se escapa aquí.
 const titulo = computed(() =>
-    (seo.value?.titulo ?? '')
+    (seo.value?.titulo_documento ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;'),
@@ -36,6 +37,20 @@ const titulo = computed(() =>
             v-if="seo.canonical"
             head-key="canonical"
             rel="canonical"
+            :href="seo.canonical"
+        />
+        <link
+            v-if="seo.canonical"
+            head-key="hreflang:es-MX"
+            rel="alternate"
+            hreflang="es-MX"
+            :href="seo.canonical"
+        />
+        <link
+            v-if="seo.canonical"
+            head-key="hreflang:x-default"
+            rel="alternate"
+            hreflang="x-default"
             :href="seo.canonical"
         />
         <meta

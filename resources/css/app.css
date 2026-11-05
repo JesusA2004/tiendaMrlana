@@ -5,8 +5,6 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
     --font-sans:
         'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
@@ -76,6 +74,7 @@
     --color-brand-warm: var(--brand-warm);
     --color-brand-ink: var(--brand-ink);
     --color-surface: var(--surface);
+    --color-surface-strong: var(--surface-strong);
 
     /* Estados semánticos */
     --color-success: var(--success);
@@ -97,7 +96,7 @@
     ::before,
     ::backdrop,
     ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
+        border-color: var(--border, currentColor);
     }
 }
 
@@ -133,12 +132,29 @@
     /* Alias legados */
     --brand-blue: var(--brand-teal);
     --brand-gray: var(--brand-warm);
-    --brand-soft: #f5f4f2;
+    --brand-soft: #f6fbf2;
     --brand-text: #1c1c1c;
 
-    --surface: #f5f4f2;
+    /* Superficies con tinte verde de marca (sin blanco plano de fondo) */
+    --surface: #f6fbf2;
+    --surface-strong: #e2f1d8;
+    --app-gradient: linear-gradient(
+        160deg,
+        #eaf6e1 0%,
+        #eef8ee 45%,
+        #e6f6f5 100%
+    );
+    --brand-shadow:
+        0 10px 30px -12px rgb(31 77 58 / 0.28),
+        0 4px 10px -6px rgb(115 200 58 / 0.35);
+    --brand-shadow-sm:
+        0 1px 2px rgb(31 77 58 / 0.06), 0 2px 8px -2px rgb(31 77 58 / 0.08);
+    --brand-glow:
+        0 0 0 1px rgb(115 200 58 / 0.45),
+        0 8px 28px -6px rgb(100 203 212 / 0.55);
+    --ease-brand: cubic-bezier(0.22, 1, 0.36, 1);
 
-    --background: #ffffff;
+    --background: #eef7e8;
     --foreground: #0a0a0a;
     --card: #ffffff;
     --card-foreground: #0a0a0a;
@@ -146,10 +162,10 @@
     --popover-foreground: #0a0a0a;
     --primary: #73c83a;
     --primary-foreground: #0a0a0a;
-    --secondary: #f1efec;
-    --secondary-foreground: #1c1c1c;
-    --muted: #f3f2ef;
-    --muted-foreground: #5c5a56;
+    --secondary: #e3f2d9;
+    --secondary-foreground: #14332b;
+    --muted: #e8f3e0;
+    --muted-foreground: #4a5a4c;
     --accent: #e3f6f8;
     --accent-foreground: #0d4c52;
     --destructive: #d92d20;
@@ -160,8 +176,8 @@
     --warning-foreground: #ffffff;
     --info: #1b7880;
     --info-foreground: #ffffff;
-    --border: #e6e3df;
-    --input: #dcd9d4;
+    --border: #d3e6c7;
+    --input: #c4dcb5;
     --ring: #3f8a1c;
     --chart-1: #73c83a;
     --chart-2: #64cbd4;
@@ -169,75 +185,58 @@
     --chart-4: #e3b23c;
     --chart-5: #e07a5f;
     --radius: 0.75rem;
-    --sidebar-background: #f7f6f4;
-    --sidebar-foreground: #2b2a28;
-    --sidebar-primary: #1f4d3a;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #eaf6e1;
-    --sidebar-accent-foreground: #14332b;
-    --sidebar-border: #e6e3df;
-    --sidebar-ring: #3f8a1c;
-    --sidebar: #f7f6f4;
-}
-
-.dark {
-    --brand-green-strong: #8fd85c;
-    --brand-green-soft: #1d3324;
-    --brand-teal-strong: #7fd8e0;
-    --brand-teal-soft: #15343a;
-    --brand-warm: #2a2926;
-    --brand-soft: #151a18;
-    --brand-text: #f2f2f0;
-
-    --surface: #121816;
-
-    --background: #0b1110;
-    --foreground: #f3f4f2;
-    --card: #111917;
-    --card-foreground: #f3f4f2;
-    --popover: #111917;
-    --popover-foreground: #f3f4f2;
-    --primary: #73c83a;
-    --primary-foreground: #0a0a0a;
-    --secondary: #1a2421;
-    --secondary-foreground: #f3f4f2;
-    --muted: #18211e;
-    --muted-foreground: #a3aba7;
-    --accent: #15343a;
-    --accent-foreground: #c9f0f3;
-    --destructive: #f2564b;
-    --destructive-foreground: #0a0a0a;
-    --success: #73c83a;
-    --success-foreground: #0a0a0a;
-    --warning: #f0a542;
-    --warning-foreground: #0a0a0a;
-    --info: #64cbd4;
-    --info-foreground: #0a0a0a;
-    --border: #24302c;
-    --input: #2c3935;
-    --ring: #73c83a;
-    --chart-1: #73c83a;
-    --chart-2: #64cbd4;
-    --chart-3: #9fd8b4;
-    --chart-4: #e3b23c;
-    --chart-5: #e07a5f;
-    --sidebar-background: #0e1513;
-    --sidebar-foreground: #eef0ee;
+    --sidebar-background: #1f4d3a;
+    --sidebar-foreground: #e6f3dd;
     --sidebar-primary: #73c83a;
     --sidebar-primary-foreground: #0a0a0a;
-    --sidebar-accent: #18241f;
-    --sidebar-accent-foreground: #eef0ee;
-    --sidebar-border: #22302b;
+    --sidebar-accent: #2b6149;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #2f644c;
     --sidebar-ring: #73c83a;
-    --sidebar: #0e1513;
+    --sidebar: #1f4d3a;
+    color-scheme: light;
 }
 
 @layer base {
     * {
         @apply border-border outline-ring/50;
     }
+    html {
+        color-scheme: light;
+        background-color: var(--background);
+    }
     body {
         @apply bg-background text-foreground;
+        background-image: var(--brand-pattern-light), var(--app-gradient);
+        background-size:
+            56px 56px,
+            cover;
+        background-attachment: fixed;
+        min-height: 100vh;
+    }
+    /* Transiciones suaves por defecto (las clases transition-* de Tailwind las sobreescriben) */
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [role='button'],
+    [data-slot='card'] {
+        transition-property:
+            color, background-color, border-color, box-shadow, opacity,
+            transform, translate, scale, text-decoration-color;
+        transition-duration: 180ms;
+        transition-timing-function: var(--ease-brand);
+    }
+    /* Micro-press en botones */
+    button:not(:disabled):active,
+    [data-slot='button']:not([aria-disabled='true']):active {
+        scale: 0.98;
+    }
+    ::selection {
+        background-color: color-mix(in oklab, var(--brand-green) 35%, white);
+        color: var(--brand-ink);
     }
     h1,
     h2,
@@ -287,6 +286,248 @@
 @utility bg-brand-pattern-light {
     background-image: var(--brand-pattern-light);
     background-size: 56px 56px;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Efectos reutilizables Mr Lana (docs/ARQUITECTURA.md §7). Todos respetan
+ * prefers-reduced-motion (ver bloque al final del archivo).
+ * ---------------------------------------------------------------------------
+ */
+
+/* Fondo de app: verde menta → turquesa claro + rombos */
+@utility bg-brand-app {
+    background-color: var(--background);
+    background-image: var(--brand-pattern-light), var(--app-gradient);
+    background-size:
+        56px 56px,
+        cover;
+}
+
+/* Degradado suave de marca para secciones destacadas sobre claro */
+@utility bg-brand-soft-gradient {
+    background-image: linear-gradient(135deg, #eaf6e1 0%, #e3f6f8 100%);
+}
+
+/* Tarjeta blanca sobre fondo verde con borde/sombra suave */
+@utility surface-card {
+    background-color: var(--card);
+    color: var(--card-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--brand-shadow-sm);
+}
+
+/* Sombras de marca */
+@utility shadow-brand {
+    box-shadow: var(--brand-shadow);
+}
+
+@utility shadow-brand-sm {
+    box-shadow: var(--brand-shadow-sm);
+}
+
+/* Encabezado translúcido con blur */
+@utility glass-header {
+    background-color: rgb(255 255 255 / 0.72);
+    backdrop-filter: saturate(1.4) blur(12px);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px);
+}
+
+/* Elevación + sombra verde al pasar el cursor */
+@utility hover-lift {
+    transition:
+        transform 220ms var(--ease-brand),
+        box-shadow 220ms var(--ease-brand),
+        border-color 220ms var(--ease-brand);
+    &:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--brand-shadow);
+        border-color: color-mix(
+            in oklab,
+            var(--brand-green) 45%,
+            var(--border)
+        );
+    }
+}
+
+/* Halo verde→turquesa al pasar el cursor / enfocar */
+@utility hover-glow {
+    transition: box-shadow 220ms var(--ease-brand);
+    &:hover,
+    &:focus-visible {
+        box-shadow: var(--brand-glow);
+    }
+}
+
+/* Brillo que recorre el elemento al pasar el cursor (botones primarios) */
+@utility shine {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        background: linear-gradient(
+            110deg,
+            transparent 30%,
+            rgb(255 255 255 / 0.45) 50%,
+            transparent 70%
+        );
+        transform: translateX(-120%);
+        transition: transform 700ms var(--ease-brand);
+        pointer-events: none;
+    }
+    &:hover::after {
+        transform: translateX(120%);
+    }
+}
+
+/* Anillo de foco de marca */
+@utility focus-brand {
+    outline: none;
+    &:focus-visible {
+        outline: none;
+        box-shadow:
+            0 0 0 2px var(--card),
+            0 0 0 4px var(--brand-green);
+    }
+}
+
+/* Subrayado animado para enlaces */
+@utility link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 2px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition:
+        background-size 260ms var(--ease-brand),
+        color 180ms;
+    &:hover,
+    &:focus-visible {
+        background-size: 100% 2px;
+    }
+}
+
+/* Micro-press explícito */
+@utility press {
+    transition: scale 120ms var(--ease-brand);
+    &:active {
+        scale: 0.98;
+    }
+}
+
+/* Skeleton con brillo verde */
+@keyframes mrl-shimmer {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+@utility skeleton-shimmer {
+    background-color: var(--brand-green-soft);
+    background-image: linear-gradient(
+        90deg,
+        var(--brand-green-soft) 0%,
+        #f6fbf2 40%,
+        #dff3f5 55%,
+        var(--brand-green-soft) 100%
+    );
+    background-size: 200% 100%;
+    animation: mrl-shimmer 1.6s linear infinite;
+}
+
+/* Entradas al montar (páginas, tarjetas) */
+@keyframes mrl-fade-up {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 14px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes mrl-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes mrl-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translate3d(0, 8px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@utility animate-page-in {
+    animation: mrl-fade-up 480ms var(--ease-brand) both;
+}
+
+@utility animate-fade-up {
+    animation: mrl-fade-up 520ms var(--ease-brand) both;
+    animation-delay: var(--enter-delay, 0ms);
+}
+
+@utility animate-fade-in {
+    animation: mrl-fade-in 400ms ease-out both;
+}
+
+@utility animate-scale-in {
+    animation: mrl-scale-in 460ms var(--ease-brand) both;
+}
+
+/* Hijos directos entran escalonados */
+@utility stagger-children {
+    & > * {
+        animation: mrl-fade-up 520ms var(--ease-brand) both;
+    }
+    & > *:nth-child(2) {
+        animation-delay: 60ms;
+    }
+    & > *:nth-child(3) {
+        animation-delay: 120ms;
+    }
+    & > *:nth-child(4) {
+        animation-delay: 180ms;
+    }
+    & > *:nth-child(5) {
+        animation-delay: 240ms;
+    }
+    & > *:nth-child(6) {
+        animation-delay: 300ms;
+    }
+    & > *:nth-child(n + 7) {
+        animation-delay: 340ms;
+    }
+}
+
+/* Filas de tabla con hover de marca (aplicar al <table> o a su contenedor) */
+@utility table-hover {
+    & tbody tr {
+        transition: background-color 160ms;
+    }
+    & tbody tr:hover {
+        background-color: color-mix(
+            in oklab,
+            var(--brand-green-soft) 80%,
+            white
+        );
+    }
 }
 
 /* Animaciones de la tienda (todas se desactivan con prefers-reduced-motion) */
@@ -340,11 +581,100 @@
     }
 
     .animate-marquee,
-    .animate-float {
+    .animate-float,
+    .animate-page-in,
+    .animate-fade-up,
+    .animate-fade-in,
+    .animate-scale-in,
+    .stagger-children > *,
+    .skeleton-shimmer {
         animation: none !important;
+    }
+
+    .hover-lift:hover {
+        transform: none;
+    }
+
+    .shine::after {
+        display: none;
+    }
+
+    *,
+    ::before,
+    ::after {
+        transition-duration: 0.01ms !important;
     }
 
     html {
         scroll-behavior: auto !important;
     }
+}
+
+/* Panel (sidebar inset): verde profundo + rombos, alineado con background-attachment fixed */
+[data-slot='sidebar-wrapper']:has([data-variant='inset']),
+[data-sidebar='sidebar'] {
+    background-color: var(--brand-deep);
+    background-image: var(--brand-pattern), var(--brand-gradient-deep);
+    background-size:
+        56px 56px,
+        cover;
+    background-attachment: fixed;
+}
+
+[data-slot='sidebar-inset'] {
+    background-color: var(--background);
+    background-image: var(--brand-pattern-light), var(--app-gradient);
+    background-size:
+        56px 56px,
+        cover;
+    background-attachment: fixed;
+}
+
+/* Scrollbar de marca: delgado, pulgar verde→turquesa, pista verde muy suave */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: #73c83a #e4f2db;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, #73c83a 85%, #64cbd4) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #e4f2db;
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-image: linear-gradient(180deg, #73c83a 0%, #64cbd4 100%);
+    border: 2px solid #e4f2db;
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-image: linear-gradient(180deg, #5fb52a 0%, #3fb7c2 100%);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+[data-sidebar='sidebar'],
+[data-sidebar='sidebar'] * {
+    scrollbar-color: rgb(255 255 255 / 0.28) transparent;
+}
+
+[data-sidebar='sidebar'] ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+[data-sidebar='sidebar'] ::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.25);
+    border-color: transparent;
 }

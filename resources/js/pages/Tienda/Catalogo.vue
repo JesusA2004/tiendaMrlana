@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
                             >Buscar en el catálogo</label
                         >
                         <div
-                            class="flex h-12 items-center gap-2 rounded-full bg-white/95 pr-2 pl-4 text-foreground shadow-lg ring-1 ring-white/20 focus-within:ring-4 focus-within:ring-brand-green/40 dark:bg-card"
+                            class="flex h-12 items-center gap-2 rounded-full bg-white/95 pr-2 pl-4 text-foreground shadow-lg ring-1 ring-white/20 focus-within:ring-4 focus-within:ring-brand-green/40"
                         >
                             <Search
                                 class="size-[18px] text-muted-foreground"
@@ -402,7 +402,7 @@ onBeforeUnmount(() => {
             <!-- Filtros de escritorio -->
             <aside class="hidden lg:block" aria-label="Filtros">
                 <div
-                    class="sticky top-28 max-h-[calc(100svh-8rem)] overflow-y-auto pr-2 pb-6"
+                    class="sticky top-28 max-h-[calc(100svh-8rem)] overflow-y-auto rounded-3xl bg-card p-5 ring-1 shadow-brand-sm ring-border/70"
                 >
                     <div class="mb-6 flex items-center justify-between">
                         <h2 class="font-display text-xl font-bold">Filtros</h2>
@@ -432,7 +432,7 @@ onBeforeUnmount(() => {
                 >
                     <button
                         type="button"
-                        class="inline-flex h-10 items-center gap-2 rounded-full border bg-background px-4 text-sm font-semibold hover:bg-muted lg:hidden"
+                        class="inline-flex h-10 items-center gap-2 rounded-full border bg-card px-4 text-sm font-semibold transition-colors hover:bg-brand-green-soft lg:hidden"
                         @click="panelMovil = true"
                     >
                         <SlidersHorizontal class="size-4" />
@@ -466,7 +466,7 @@ onBeforeUnmount(() => {
                         <NativeSelect
                             id="orden"
                             v-model="orden"
-                            class="h-10 rounded-full bg-background pl-4 text-sm font-medium"
+                            class="h-10 rounded-full bg-card pl-4 text-sm font-medium"
                             aria-label="Ordenar productos"
                         >
                             <NativeSelectOption
@@ -596,7 +596,7 @@ onBeforeUnmount(() => {
                             <li>
                                 <button
                                     type="button"
-                                    class="inline-flex size-10 items-center justify-center rounded-full border bg-background transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                    class="inline-flex size-10 items-center justify-center rounded-full border bg-card transition-[background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-brand-green-soft disabled:pointer-events-none disabled:opacity-40"
                                     :disabled="!anterior?.url"
                                     aria-label="Página anterior"
                                     @click="anterior && irAPagina(anterior)"
@@ -619,7 +619,7 @@ onBeforeUnmount(() => {
                                     class="inline-flex size-10 items-center justify-center rounded-full text-sm font-semibold transition-colors"
                                     :class="
                                         enlace.active
-                                            ? 'bg-brand-ink text-white dark:bg-primary dark:text-primary-foreground'
+                                            ? 'bg-brand-ink text-white'
                                             : 'hover:bg-muted'
                                     "
                                     :aria-current="
@@ -634,7 +634,7 @@ onBeforeUnmount(() => {
                             <li>
                                 <button
                                     type="button"
-                                    class="inline-flex size-10 items-center justify-center rounded-full border bg-background transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                    class="inline-flex size-10 items-center justify-center rounded-full border bg-card transition-[background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-brand-green-soft disabled:pointer-events-none disabled:opacity-40"
                                     :disabled="!siguiente?.url"
                                     aria-label="Página siguiente"
                                     @click="siguiente && irAPagina(siguiente)"

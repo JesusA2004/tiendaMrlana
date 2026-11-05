@@ -6,21 +6,31 @@ use App\Enums\EstadoPublicacion;
 use App\Enums\ModalidadVenta;
 use App\Models\Categoria;
 use App\Models\Producto;
+use App\Services\Catalogo\ImagenesProducto;
+use App\Services\Seo\ImagenOgProducto;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
- * Importa (idempotente) los 25 modelos del catálogo PDF de muebles 2026 como productos
- * PENDIENTES DE APROBACIÓN, sin precio de venta, sin existencias y sin imágenes.
+ * Importa (idempotente) los 25 modelos del catálogo PDF de muebles 2026.
  *
- * Reglas (docs/ARQUITECTURA.md §9):
+ * Sin opciones quedan PENDIENTES DE APROBACIÓN, sin precio de venta, sin existencias y sin imágenes.
+ * Opciones (decisión del dueño, docs/ARQUITECTURA.md §9):
+ * - `imagenes`: adjunta las fotos extraídas del PDF (database/data/catalogo_muebles_mx_2026/imagenes,
+ *   manifiesto `imagenes.json`) SÓLO si el producto aún no tiene imágenes (no duplica).
+ * - `publicar`: precio de venta = precio del catálogo SÓLO si no tiene precio; `bajo_pedido` si sigue
+ *   en inventario con 0 existencias y sin movimientos; publica (visible, activo, aprobado) los que aún
+ *   no fueron revisados (borrador/pendiente) y ya no tienen faltantes. Publicados/pausados no se tocan.
+ * - `forzarPrecios`: re-sincroniza el precio de venta con el del catálogo aunque ya exista.
+ *
+ * Reglas comunes:
  * - Llave idempotente: `importacion_clave` (respaldo: SKU interno `ML-MUE-<codigo>`).
  * - Reimportar sólo llena campos vacíos y actualiza los datos de referencia
- *   (`precio_referencia`, `referencia_consultada_en`). Nunca toca precio, existencias,
- *   estado, visibilidad, nombre, slug ni imágenes que el administrador ya definió.
- * - Los precios del PDF son referencias públicas de otra tienda, NO precios de venta.
- * - No se asigna marca comercial ni se extraen fotografías.
+ *   (`precio_referencia`, `referencia_consultada_en`). Nunca toca nombre, slug ni existencias, ni
+ *   (fuera de las opciones anteriores) precio, estado, visibilidad o imágenes del administrador.
+ * - No se asigna marca comercial.
  */
 class ImportadorCatalogoMuebles
 {
@@ -45,18 +55,36 @@ class ImportadorCatalogoMuebles
     /** @var array<string, Categoria|null> */
     private array $categorias = [];
 
+    /** Estados en los que el importador aún puede decidir modalidad y publicación. */
+    private const ESTADOS_SIN_REVISAR = [EstadoPublicacion::Borrador->value, EstadoPublicacion::PendienteAprobacion->value];
+
+    public function __construct(private readonly ImagenesProducto $imagenesProducto) {}
+
     public static function rutaDatos(): string
     {
         return database_path('data/catalogo_muebles_mx_2026.json');
     }
 
-    public function importar(bool $simulacion = false, ?string $ruta = null): ResultadoImportacion
+    /** Carpeta con las fotos extraídas del PDF (`imagenes/`) y su manifiesto `imagenes.json`. */
+    public static function rutaImagenes(): string
     {
+        return database_path('data/catalogo_muebles_mx_2026');
+    }
+
+    public function importar(
+        bool $simulacion = false,
+        ?string $ruta = null,
+        bool $imagenes = false,
+        bool $publicar = false,
+        bool $forzarPrecios = false,
+    ): ResultadoImportacion {
         $datos = $this->leer($ruta ?? self::rutaDatos());
         $resultado = new ResultadoImportacion($simulacion);
         $this->categorias = [];
+        /** @var list<array{0: Producto, 1: array<string, mixed>}> $importados */
+        $importados = [];
 
-        $ejecutar = function () use ($datos, $simulacion, $resultado) {
+        $ejecutar = function () use ($datos, $simulacion, $resultado, &$importados) {
             $padre = $this->categoria(self::CATEGORIA_PADRE, null, 0, $simulacion, $resultado);
 
             foreach (self::CATEGORIAS as $orden => $nombre) {
@@ -64,21 +92,164 @@ class ImportadorCatalogoMuebles
             }
 
             foreach ($datos['productos'] as $item) {
-                $this->importarProducto($item, $datos, $simulacion, $resultado);
+                $importados[] = [$this->importarProducto($item, $datos, $simulacion, $resultado), $item];
             }
         };
 
         // En simulación no se escribe nada (no dependemos de rollback: MyISAM no lo soporta).
         $simulacion ? $ejecutar() : DB::transaction($ejecutar);
 
+        if ($imagenes || $publicar || $forzarPrecios) {
+            $manifiesto = $imagenes ? $this->manifiestoImagenes() : [];
+
+            // Fuera de la transacción: escribe archivos en disco (un fallo no deshace la importación base).
+            foreach ($importados as [$producto, $item]) {
+                $this->prepararVenta($producto, $item, $manifiesto, $simulacion, $resultado, $imagenes, $publicar, $forzarPrecios);
+            }
+        }
+
         return $resultado;
+    }
+
+    /**
+     * Segunda fase (opcional): precio de venta, modalidad, fotos y publicación.
+     *
+     * @param  array<string, mixed>  $item
+     * @param  array<string, list<string>>  $manifiesto
+     */
+    private function prepararVenta(
+        Producto $producto,
+        array $item,
+        array $manifiesto,
+        bool $simulacion,
+        ResultadoImportacion $resultado,
+        bool $imagenes,
+        bool $publicar,
+        bool $forzarPrecios,
+    ): void {
+        $cambios = [];
+        $sinRevisar = in_array($producto->estado_publicacion, self::ESTADOS_SIN_REVISAR, true);
+        $precioCatalogo = (float) ($item['precio_referencia'] ?? 0) > 0
+            ? number_format((float) $item['precio_referencia'], 2, '.', '')
+            : null;
+
+        // 1) Precio de venta = precio del catálogo (sólo si no tiene; con --forzar-precios, siempre).
+        $precioCambio = false;
+
+        if ($precioCatalogo !== null && (($publicar && $producto->precio === null)
+            || ($forzarPrecios && (float) $producto->precio !== (float) $precioCatalogo))) {
+            $producto->precio = $precioCatalogo;
+            $cambios[] = 'precio $'.number_format((float) $precioCatalogo, 2);
+            $precioCambio = true;
+        }
+
+        // 2) Sin existencias y sin decisión del admin → bajo pedido (no se inventan existencias).
+        if ($publicar && $sinRevisar
+            && $producto->modalidad_venta === ModalidadVenta::Inventario->value
+            && (int) $producto->stock === 0
+            && (! $producto->exists || ! $producto->movimientosInventario()->exists())) {
+            $producto->modalidad_venta = ModalidadVenta::BajoPedido->value;
+            $cambios[] = 'bajo pedido';
+        }
+
+        if (! $simulacion && $producto->isDirty()) {
+            $producto->save();
+        }
+
+        // 3) Fotos del catálogo, sólo si el producto aún no tiene ninguna (re-ejecutar no duplica).
+        $conImagenes = filled($producto->imagen_principal) || ($producto->exists && $producto->imagenes()->exists());
+        $avisos = [];
+
+        if ($imagenes && ! $conImagenes) {
+            $archivos = $manifiesto[(string) $producto->codigo_referencia] ?? [];
+
+            if ($archivos === []) {
+                $avisos[] = 'No hay fotos del catálogo para este modelo.';
+            } elseif ($simulacion) {
+                $producto->imagen_principal = basename($archivos[0]); // sólo en memoria, para evaluar la publicación
+                $cambios[] = count($archivos).' imagen(es)';
+            } else {
+                $this->imagenesProducto->agregar($producto, array_map(
+                    fn (string $ruta) => new UploadedFile($ruta, basename($ruta), null, null, true),
+                    $archivos,
+                ));
+                $producto->refresh();
+                $cambios[] = count($archivos).' imagen(es)';
+                $precioCambio = false; // agregar() ya generó la imagen OG con el precio actual
+            }
+        }
+
+        // 4) Publicar si ya no le falta nada (no toca publicados ni pausados por el admin).
+        $publicado = false;
+
+        if ($publicar && $sinRevisar) {
+            $faltantes = $producto->faltantesParaPublicar();
+
+            if ($faltantes === []) {
+                $producto->forceFill([
+                    'visible' => true,
+                    'activo' => true,
+                    'estado_publicacion' => EstadoPublicacion::Publicado->value,
+                    'aprobado_en' => now(),
+                    'publicado_en' => $producto->publicado_en ?? now(),
+                ]);
+
+                if (! $simulacion) {
+                    $producto->save();
+                }
+
+                $cambios[] = 'publicado';
+                $publicado = true;
+            } else {
+                array_push($avisos, ...$faltantes);
+            }
+        } elseif ($publicar && $producto->estado_publicacion === EstadoPublicacion::Pausado->value) {
+            $avisos[] = 'Pausado por el administrador: no se publica automáticamente.';
+        }
+
+        // La imagen para compartir muestra el precio: regenerarla si cambió y ya tenía fotos.
+        if (! $simulacion && $precioCambio && $conImagenes) {
+            app(ImagenOgProducto::class)->regenerar($producto);
+        }
+
+        $resultado->registrarVenta($producto->sku, $producto->nombre, $cambios, $avisos, $publicado);
+    }
+
+    /**
+     * Rutas absolutas de las fotos por código de referencia (manifiesto `imagenes.json`).
+     *
+     * @return array<string, list<string>>
+     */
+    private function manifiestoImagenes(): array
+    {
+        $base = self::rutaImagenes();
+        $archivo = $base.DIRECTORY_SEPARATOR.'imagenes.json';
+
+        if (! is_file($archivo)) {
+            throw new InvalidArgumentException("No se encontró el manifiesto de imágenes del catálogo: {$archivo}");
+        }
+
+        $datos = json_decode((string) file_get_contents($archivo), true);
+        $rutas = [];
+
+        foreach ((array) ($datos['imagenes'] ?? []) as $codigo => $nombres) {
+            foreach ((array) $nombres as $nombre) {
+                $ruta = $base.DIRECTORY_SEPARATOR.'imagenes'.DIRECTORY_SEPARATOR.basename((string) $nombre);
+
+                if (is_file($ruta)) {
+                    $rutas[(string) $codigo][] = $ruta;
+                }
+            }
+        }
+
+        return $rutas;
     }
 
     /**
      * @param  array<string, mixed>  $item
      * @param  array<string, mixed>  $datos
      */
-    private function importarProducto(array $item, array $datos, bool $simulacion, ResultadoImportacion $resultado): void
+    private function importarProducto(array $item, array $datos, bool $simulacion, ResultadoImportacion $resultado): Producto
     {
         $codigo = trim((string) $item['codigo_referencia']);
         $clave = trim((string) ($item['importacion_clave'] ?? '')) ?: self::ORIGEN.':'.$codigo;
@@ -136,7 +307,7 @@ class ImportadorCatalogoMuebles
 
             $resultado->registrar($clave, $sku, $producto->nombre, ResultadoImportacion::CREADO);
 
-            return;
+            return $producto;
         }
 
         foreach (self::CAMPOS_SI_VACIOS as $campo) {
@@ -158,7 +329,7 @@ class ImportadorCatalogoMuebles
         if ($cambios === []) {
             $resultado->registrar($clave, $producto->sku, $producto->nombre, ResultadoImportacion::SIN_CAMBIOS);
 
-            return;
+            return $producto;
         }
 
         if (! $simulacion) {
@@ -166,6 +337,8 @@ class ImportadorCatalogoMuebles
         }
 
         $resultado->registrar($clave, $producto->sku, $producto->nombre, ResultadoImportacion::ACTUALIZADO, $cambios);
+
+        return $producto;
     }
 
     private function categoria(string $nombre, ?Categoria $padre, int $orden, bool $simulacion, ResultadoImportacion $resultado): ?Categoria

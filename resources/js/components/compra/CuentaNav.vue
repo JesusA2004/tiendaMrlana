@@ -34,8 +34,14 @@ const enlaces = [
 </script>
 
 <template>
-    <section class="bg-brand-deep-gradient text-white">
-        <div class="mx-auto w-full max-w-5xl px-4 pt-8 pb-0 sm:px-6 lg:px-8">
+    <section class="relative overflow-hidden bg-brand-deep-pattern text-white">
+        <div
+            class="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-brand-green/25 blur-3xl"
+            aria-hidden="true"
+        />
+        <div
+            class="relative mx-auto w-full max-w-5xl animate-fade-up px-4 pt-8 pb-0 sm:px-6 lg:px-8"
+        >
             <p
                 class="text-xs font-bold tracking-[0.2em] text-brand-green uppercase"
             >
@@ -57,17 +63,17 @@ const enlaces = [
                     v-for="e in enlaces"
                     :key="e.clave"
                     :href="e.href"
-                    class="flex shrink-0 items-center gap-2 rounded-t-2xl px-4 py-3 text-sm font-semibold transition"
+                    class="group flex shrink-0 items-center gap-2 rounded-t-2xl px-4 py-3 text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:outline-none"
                     :class="
                         activo === e.clave
-                            ? 'bg-background text-foreground'
-                            : 'text-white/80 hover:bg-white/10 hover:text-white'
+                            ? 'bg-background text-brand-deep shadow-[0_-6px_16px_-8px_rgb(0_0_0/0.3)]'
+                            : 'text-white/80 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white'
                     "
                     :aria-current="activo === e.clave ? 'page' : undefined"
                 >
                     <component
                         :is="e.icono"
-                        class="size-4"
+                        class="size-4 transition-transform group-hover:scale-110"
                         aria-hidden="true"
                     />
                     {{ e.texto }}

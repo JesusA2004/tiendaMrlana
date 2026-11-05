@@ -237,7 +237,24 @@ Texto con contraste AA: el verde de marca sobre blanco NO alcanza AA para texto 
 Clases Tailwind: `bg-brand-green`, `text-brand-green-strong`, `bg-brand-teal-soft`, `bg-brand-deep`, `bg-surface`,
 `bg-success`/`text-warning`/`bg-info`… ; utilidades `bg-brand-gradient`, `bg-brand-deep-gradient`, `text-brand-gradient`,
 `font-display` (Baloo 2; `font-sans` = Montserrat), `bg-brand-pattern` (rombos sobre oscuro), `bg-brand-pattern-light`, `bg-brand-deep-pattern` (verde profundo + rombos),
-`animate-marquee`, `animate-float`, `.reveal`/`.is-visible`. `--primary` = verde marca con texto negro (AA en claro y oscuro).
+`animate-marquee`, `animate-float`, `.reveal`/`.is-visible`. `--primary` = verde marca con texto negro (AA).
+
+**Tema único claro con tinte verde (sin modo oscuro).** No existe `.dark`, ni variantes `dark:`, ni página de Apariencia; `color-scheme: light`.
+- Fondo global: `--background` #EEF7E8 + `body` con `--app-gradient` (menta→turquesa claro) y rombos `--brand-pattern-light`.
+  Tarjetas/popovers siguen en blanco (`--card`) con `--border` verde suave para contraste AA. `--muted`/`--secondary` verdes suaves.
+- Sidebar admin: `--sidebar-*` en verde profundo (#1F4D3A) con texto claro; activo = degradado de marca + texto negro.
+- Tokens nuevos: `--surface-strong` (`bg-surface-strong`), `--app-gradient`, `--brand-shadow`, `--brand-shadow-sm`, `--brand-glow`, `--ease-brand`.
+- Utilidades (`resources/css/app.css`, todas respetan `prefers-reduced-motion`):
+  `bg-brand-app` (fondo de app), `bg-brand-soft-gradient` (sección destacada clara), `surface-card` (tarjeta blanca + borde + sombra),
+  `shadow-brand` / `shadow-brand-sm`, `glass-header` (blanco translúcido + blur), `hover-lift` (sube 3px + sombra verde),
+  `hover-glow` (halo verde→turquesa), `shine` (brillo al hover, botones primarios), `focus-brand` (anillo verde),
+  `link-underline` (subrayado animado), `press` (scale .98 al presionar; ya global en `button`), `skeleton-shimmer`
+  (skeleton verde; `ui/skeleton` lo usa), `animate-page-in`, `animate-fade-up` (retraso con `--enter-delay`), `animate-fade-in`,
+  `animate-scale-in`, `stagger-children` (hijos entran escalonados), `table-hover` (hover de fila en tablas).
+- Transiciones suaves por defecto (180ms) en `a, button, input, select, textarea, [data-slot=card]`.
+- `ui/button`: variantes `default` (degradado verde→turquesa + shine, texto negro), `brand` (verde sólido), `deep` (verde profundo),
+  `outline`, `secondary`, `ghost`, `link`, `destructive`. `ui/badge`: variantes extra `success`, `warning`, `info`, `brand`.
+  `ui/card`: prop `interactive` agrega `hover-lift`.
 
 ## 8. PWA
 
@@ -249,15 +266,24 @@ prompt de instalación discreto en Android (beforeinstallprompt) e instrucciones
 
 ## 9. Catálogo PDF
 
-Fuente: `docs/catalogo/Catalogo_muebles_Mexico_2026.pdf` (25 modelos, referencias IKEA MX, precios de
-referencia al 04/11/2026). Datos extraídos a `database/data/catalogo_muebles_mx_2026.json`. Importación
-idempotente con `php artisan catalogo:importar-muebles` (también llamada desde un seeder de producción
-`CatalogoMueblesSeeder`) usando `importacion_clave`. Productos quedan `estado_publicacion=pendiente_aprobacion`,
-`activo=true`, `visible=false`, `precio=null`, `stock=0`, `modalidad_venta` sin decidir (`inventario` por defecto),
-sin imágenes (las fotos del PDF son de IKEA; no se extraen ni reutilizan), `precio_referencia` y
-`fuente_referencia` llenos SÓLO para el admin. Marca: no se asigna "IKEA" como marca comercial; el modelo y
-código quedan en `modelo`/`codigo_referencia`. Reimportar nunca sobreescribe campos que el admin ya editó
-(precio, stock, imágenes, estado, descripción si fue modificada → usar sólo `firstOrCreate`/llenar nulos).
+Fuente: `docs/catalogo/Catalogo_muebles_Mexico_2026.pdf` (25 modelos, precios del catálogo al 04/11/2026).
+Datos en `database/data/catalogo_muebles_mx_2026.json`; fotos extraídas del PDF (pdfimages) en
+`database/data/catalogo_muebles_mx_2026/imagenes/{codigo_referencia}-{n}.webp` (n=1 producto sobre fondo
+blanco = principal; n=2 ambientación cuando aporta) con manifiesto `imagenes.json`.
+
+`php artisan catalogo:importar-muebles` (idempotente por `importacion_clave`; también `CatalogoMueblesSeeder`):
+- Sin opciones: crea/actualiza como `pendiente_aprobacion`, `visible=false`, `precio=null`, `stock=0`, sin imágenes.
+  Reimportar sólo llena campos vacíos y sincroniza `precio_referencia`/`referencia_consultada_en`.
+- **Decisión del dueño (2026-11-05)**: el catálogo se publica con fotos del PDF y precio del catálogo como precio de venta:
+  `--imagenes` adjunta las fotos vía `ImagenesProducto::agregar` (WebP + OG) sólo si el producto no tiene imágenes;
+  `--publicar` pone `precio = precio_referencia` sólo si `precio` es null, `modalidad_venta=bajo_pedido` si sigue en
+  inventario con stock 0 y sin movimientos (sin `tiempo_entrega_dias`), y publica (`visible`, `activo`, `publicado`,
+  `aprobado_en`) los que están en borrador/pendiente y cuyo `faltantesParaPublicar()` queda vacío; reporta los demás.
+  Publicados y pausados por el admin no se tocan. `--forzar-precios` re-sincroniza el precio (no por defecto).
+  Seeder: `CATALOGO_MUEBLES_PUBLICAR=true` (config `catalogo.muebles_publicar`) equivale a `--imagenes --publicar`.
+- Marca: no se asigna marca comercial; el modelo y código quedan en `modelo`/`codigo_referencia`. El texto público
+  muestra el nombre del modelo tal cual y no presenta a Mr Lana como distribuidor de la marca de referencia;
+  `fuente_referencia` y `precio_referencia` siguen siendo internos (ocultos al serializar).
 
 ## 10. Pruebas
 
@@ -362,6 +388,11 @@ navegación en cliente; el JSON-LD sólo lo emite el servidor. URLs absolutas co
 Config `config/seo.php` (`indexar` = `SEO_INDEXAR` o `APP_ENV=production`). `/robots.txt` es dinámico (no existe
 `public/robots.txt`). Imagen OG general `public/icons/og-image.jpg`; por producto `App\Services\Seo\ImagenOgProducto`
 (JPG 1200x630 en disco public `og/productos/`, regenerada desde `ImagenesProducto::sincronizarPrincipal`).
+Marca: `<title>` del home `config('seo.titulo_home')`, resto "{Página} | Mr Lana Tienda" (`titulo_documento`; app.ts no
+añade sufijo a títulos con " | "); JSON-LD `Organization`+`OnlineStore` y `WebSite` con `alternateName`
+(`seo.nombres_alternos`); `hreflang es-MX`; metas de verificación `SEO_GOOGLE_VERIFICATION`/`SEO_BING_VERIFICATION`.
+OG general generada con `npm run og:image` (`resources/og/`); OG de producto con fuentes de `resources/fonts`
+(nombre + precio publicado, zona segura central). Alta en Google: docs/DESPLIEGUE.md §8.
 Pruebas en `tests/Feature/Seo`.
 
 ## 13. Cotización de envío con varias paqueterías

@@ -76,8 +76,8 @@ class UsuarioController extends Controller
         $request->merge(['email' => Str::lower(trim((string) $request->input('email')))]);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'name' => ['required', 'string', 'max:191'],
+            'email' => ['required', 'email', 'max:191', 'unique:users,email'],
             'rol' => ['required', Rule::in(self::ROLES)],
         ]);
 
@@ -104,8 +104,8 @@ class UsuarioController extends Controller
         $request->merge(['email' => Str::lower(trim((string) $request->input('email')))]);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'name' => ['required', 'string', 'max:191'],
+            'email' => ['required', 'email', 'max:191', Rule::unique('users', 'email')->ignore($user->id)],
             'rol' => ['required', Rule::in(self::ROLES)],
         ]);
 

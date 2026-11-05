@@ -239,7 +239,7 @@ function stockClase(p: ProductoFila): string {
 <template>
     <Head title="Productos" />
 
-    <div class="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div class="w-full animate-page-in space-y-6 p-4 md:p-6">
         <!-- Encabezado -->
         <header
             class="relative overflow-hidden rounded-2xl bg-brand-deep-pattern px-5 py-6 text-white shadow-sm md:px-8"
@@ -282,20 +282,28 @@ function stockClase(p: ProductoFila): string {
                 </div>
             </div>
 
-            <dl class="mt-6 grid grid-cols-3 gap-3 text-center sm:max-w-lg">
-                <div class="rounded-xl bg-white/10 px-3 py-2">
+            <dl
+                class="mt-6 grid stagger-children grid-cols-3 gap-3 text-center sm:max-w-lg"
+            >
+                <div
+                    class="rounded-xl bg-white/10 px-3 py-2 transition-colors duration-200 hover:bg-white/20"
+                >
                     <dt class="text-[11px] text-white/70">Por aprobar</dt>
                     <dd class="font-display text-2xl font-bold">
                         {{ conteos.pendiente_aprobacion ?? 0 }}
                     </dd>
                 </div>
-                <div class="rounded-xl bg-white/10 px-3 py-2">
+                <div
+                    class="rounded-xl bg-white/10 px-3 py-2 transition-colors duration-200 hover:bg-white/20"
+                >
                     <dt class="text-[11px] text-white/70">Agotados</dt>
                     <dd class="font-display text-2xl font-bold">
                         {{ resumen.agotados }}
                     </dd>
                 </div>
-                <div class="rounded-xl bg-white/10 px-3 py-2">
+                <div
+                    class="rounded-xl bg-white/10 px-3 py-2 transition-colors duration-200 hover:bg-white/20"
+                >
                     <dt class="text-[11px] text-white/70">Bajo mínimo</dt>
                     <dd class="font-display text-2xl font-bold">
                         {{ resumen.bajo_minimo }}
@@ -340,11 +348,11 @@ function stockClase(p: ProductoFila): string {
                 v-for="tab in pestanas"
                 :key="tab.value"
                 type="button"
-                class="inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition"
+                class="inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
                 :class="
                     filtros.estado === tab.value
                         ? 'border-brand-deep bg-brand-deep text-white'
-                        : 'bg-background hover:border-brand-green'
+                        : 'bg-background hover:border-brand-green hover:bg-brand-green-soft hover:text-brand-green-strong'
                 "
                 :aria-pressed="filtros.estado === tab.value"
                 @click="cambiarEstado(tab.value)"
@@ -364,7 +372,7 @@ function stockClase(p: ProductoFila): string {
 
         <!-- Filtros -->
         <section
-            class="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-6"
+            class="grid animate-fade-up gap-3 surface-card rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-6"
             aria-label="Filtros"
         >
             <div class="relative sm:col-span-2">
@@ -495,9 +503,9 @@ function stockClase(p: ProductoFila): string {
         <!-- Tabla (escritorio) -->
         <div
             v-if="productos.data.length"
-            class="hidden overflow-hidden rounded-xl border bg-card lg:block"
+            class="hidden animate-fade-up overflow-hidden surface-card rounded-xl border bg-card lg:block"
         >
-            <table class="w-full text-sm">
+            <table class="w-full table-hover text-sm">
                 <thead
                     class="bg-muted/50 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                 >
@@ -516,18 +524,18 @@ function stockClase(p: ProductoFila): string {
                     <tr
                         v-for="p in productos.data"
                         :key="p.id"
-                        class="transition hover:bg-muted/30"
+                        class="group transition-colors"
                     >
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
                                 <div
-                                    class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted"
+                                    class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted transition-shadow duration-300 group-hover:shadow-brand"
                                 >
                                     <img
                                         v-if="p.imagen"
                                         :src="p.imagen"
                                         :alt="p.nombre"
-                                        class="size-full object-cover"
+                                        class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                                         loading="lazy"
                                     />
                                     <ImageOff
@@ -538,7 +546,7 @@ function stockClase(p: ProductoFila): string {
                                 <div class="min-w-0">
                                     <Link
                                         :href="edit(p.id).url"
-                                        class="line-clamp-1 font-semibold hover:text-brand-green-strong"
+                                        class="line-clamp-1 font-semibold transition-colors hover:text-brand-green-strong"
                                         >{{ p.nombre }}</Link
                                     >
                                     <p class="text-xs text-muted-foreground">
@@ -569,9 +577,7 @@ function stockClase(p: ProductoFila): string {
                                 class="font-semibold"
                                 >{{ formatoMoneda(p.precio) }}</span
                             >
-                            <span
-                                v-else
-                                class="text-xs text-amber-700 dark:text-amber-400"
+                            <span v-else class="text-xs text-amber-700"
                                 >Sin precio</span
                             >
                         </td>
@@ -708,12 +714,12 @@ function stockClase(p: ProductoFila): string {
         <!-- Tarjetas (móvil/tablet) -->
         <ul
             v-if="productos.data.length"
-            class="grid gap-3 sm:grid-cols-2 lg:hidden"
+            class="grid stagger-children gap-3 sm:grid-cols-2 lg:hidden"
         >
             <li
                 v-for="p in productos.data"
                 :key="p.id"
-                class="flex flex-col gap-3 rounded-xl border bg-card p-4"
+                class="group flex hover-lift flex-col gap-3 rounded-xl border bg-card p-4"
             >
                 <div class="flex gap-3">
                     <div
@@ -723,7 +729,7 @@ function stockClase(p: ProductoFila): string {
                             v-if="p.imagen"
                             :src="p.imagen"
                             :alt="p.nombre"
-                            class="size-full object-cover"
+                            class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                             loading="lazy"
                         />
                         <ImageOff v-else class="size-5 text-muted-foreground" />
@@ -731,7 +737,7 @@ function stockClase(p: ProductoFila): string {
                     <div class="min-w-0 flex-1">
                         <Link
                             :href="edit(p.id).url"
-                            class="line-clamp-2 font-semibold"
+                            class="line-clamp-2 font-semibold transition-colors hover:text-brand-green-strong"
                             >{{ p.nombre }}</Link
                         >
                         <p class="text-xs text-muted-foreground">{{ p.sku }}</p>

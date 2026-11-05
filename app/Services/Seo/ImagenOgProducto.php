@@ -3,6 +3,7 @@
 namespace App\Services\Seo;
 
 use App\Models\Producto;
+use App\Services\Catalogo\PrecioService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -11,10 +12,12 @@ use Throwable;
  * Imagen Open Graph de producto (JPG 1200x630 < 300 KB) para vistas previas al compartir
  * (WhatsApp, Facebook, X, Telegram, iMessage).
  *
- * Se compone con GD: fondo verde profundo de marca, tarjeta blanca con la foto principal
- * centrada (sin recortar), logo Mr Lana y franja con el degradado verde → turquesa.
+ * Se compone con GD (fuentes de marca en resources/fonts): fondo verde profundo con rombos,
+ * tarjeta blanca con la foto principal completa (sin recortar) en la zona segura central
+ * (x 290–910, así el recorte cuadrado de WhatsApp la muestra entera), nombre del producto,
+ * logo Mr Lana y pastilla con el precio publicado (o el dominio si no hay precio).
  * Se guarda en el disco `public` como `og/productos/{id}-{hash}.jpg`; el hash depende de la
- * ruta de la imagen principal, así que al cambiarla se genera una nueva y se borran las previas.
+ * foto principal, el nombre y el precio, así que al cambiar se genera una nueva y se borran las previas.
  * Si algo falla devuelve null y el llamador usa la imagen general.
  */
 class ImagenOgProducto
@@ -28,7 +31,7 @@ class ImagenOgProducto
     public const ALTO = 630;
 
     /** Cambiar si se modifica el diseño (fuerza regenerar todas). */
-    private const VERSION = 'v1';
+    private const VERSION = 'v2';
 
     private const CALIDAD = 84;
 
@@ -48,7 +51,8 @@ class ImagenOgProducto
         }
 
         $disco = Storage::disk(self::DISCO);
-        $destino = $this->destino($producto, $origen);
+        $precio = $this->precioPublicado($producto);
+        $destino = $this->destino($producto, $origen, $precio);
 
         if (! $disco->exists($destino)) {
             if (! $generarSiFalta || ! $disco->exists($origen)) {
@@ -56,7 +60,7 @@ class ImagenOgProducto
             }
 
             try {
-                $jpg = $this->componer((string) $disco->get($origen));
+                $jpg = $this->componer((string) $disco->get($origen), $producto, $precio);
             } catch (Throwable $e) {
                 Log::warning('No se pudo generar la imagen OG del producto', ['producto' => $producto->id, 'error' => $e->getMessage()]);
                 $jpg = null;
@@ -98,9 +102,21 @@ class ImagenOgProducto
 
     // ------------------------------------------------------------------ internos
 
-    private function destino(Producto $producto, string $origen): string
+    /** El archivo depende de la foto, el nombre y el precio publicado: si cambian, se regenera. */
+    private function destino(Producto $producto, string $origen, ?float $precio): string
     {
-        return self::DIRECTORIO.'/'.$producto->id.'-'.substr(sha1(self::VERSION.'|'.$origen), 0, 12).'.jpg';
+        return self::DIRECTORIO.'/'.$producto->id.'-'.substr(sha1(self::VERSION.'|'.$origen.'|'.$producto->nombre.'|'.$precio), 0, 12).'.jpg';
+    }
+
+    private function precioPublicado(Producto $producto): ?float
+    {
+        try {
+            $final = app(PrecioService::class)->calcular($producto)['precio_final'] ?? null;
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $final !== null && (float) $final > 0 ? round((float) $final, 2) : null;
     }
 
     private function borrarAnteriores(Producto $producto, ?string $conservar): void
@@ -146,7 +162,7 @@ class ImagenOgProducto
         return str_contains($ruta, '..') ? null : ltrim($ruta, '/');
     }
 
-    private function componer(string $datos): ?string
+    private function componer(string $datos, Producto $producto, ?float $precio): ?string
     {
         $info = @getimagesizefromstring($datos);
 
@@ -164,25 +180,29 @@ class ImagenOgProducto
         $h = self::ALTO;
         $lienzo = imagecreatetruecolor($w, $h);
         imagealphablending($lienzo, true);
-        imageantialias($lienzo, true);
+        imageantialias($lienzo, false); // las líneas antialias de GD ignoran la transparencia
 
-        // Fondo: degradado vertical verde profundo de marca (#1F4D3A → #14332B).
+        // Fondo: degradado verde profundo de marca (#22573F → #12302A) con rombos tenues.
         for ($y = 0; $y < $h; $y++) {
-            $t = $y / $h;
-            imageline($lienzo, 0, $y, $w, $y, $this->color($lienzo, [0x1F, 0x4D, 0x3A], [0x14, 0x33, 0x2B], $t));
+            imageline($lienzo, 0, $y, $w, $y, $this->color($lienzo, [0x22, 0x57, 0x3F], [0x12, 0x30, 0x2A], $y / $h));
         }
 
-        // Tarjeta blanca redondeada.
-        [$cx1, $cy1, $cx2, $cy2, $r] = [40, 34, $w - 40, 548, 28];
-        $blanco = imagecolorallocate($lienzo, 255, 255, 255);
-        imagefilledrectangle($lienzo, $cx1 + $r, $cy1, $cx2 - $r, $cy2, $blanco);
-        imagefilledrectangle($lienzo, $cx1, $cy1 + $r, $cx2, $cy2 - $r, $blanco);
-        foreach ([[$cx1 + $r, $cy1 + $r], [$cx2 - $r, $cy1 + $r], [$cx1 + $r, $cy2 - $r], [$cx2 - $r, $cy2 - $r]] as [$x, $y]) {
-            imagefilledellipse($lienzo, $x, $y, $r * 2, $r * 2, $blanco);
+        $linea = imagecolorallocatealpha($lienzo, 255, 255, 255, 116);
+        for ($x = -$h; $x < $w + $h; $x += 56) {
+            imageline($lienzo, $x, 0, $x + $h, $h, $linea);
+            imageline($lienzo, $x, $h, $x + $h, 0, $linea);
         }
+        imagefilledellipse($lienzo, 70, 560, 380, 380, imagecolorallocatealpha($lienzo, 0x64, 0xCB, 0xD4, 114));
+        imagefilledellipse($lienzo, 1140, 60, 380, 380, imagecolorallocatealpha($lienzo, 0x73, 0xC8, 0x3A, 112));
+        $this->rombo($lienzo, 160, 150, 14, imagecolorallocate($lienzo, 0x64, 0xCB, 0xD4));
+        $this->rombo($lienzo, 1050, 470, 16, imagecolorallocate($lienzo, 0x73, 0xC8, 0x3A));
 
-        // Foto centrada dentro de la tarjeta, sin recortar.
-        $relleno = 24;
+        // Zona segura central (x 290–910): tarjeta blanca con la foto completa (sin recortar).
+        [$cx1, $cy1, $cx2, $cy2] = [290, 30, 910, 404];
+        $this->rectanguloRedondeado($lienzo, $cx1, $cy1 + 10, $cx2, $cy2 + 10, 30, imagecolorallocatealpha($lienzo, 0, 0, 0, 96));
+        $this->rectanguloRedondeado($lienzo, $cx1, $cy1, $cx2, $cy2, 30, imagecolorallocate($lienzo, 255, 255, 255));
+
+        $relleno = 22;
         $maxW = ($cx2 - $cx1) - 2 * $relleno;
         $maxH = ($cy2 - $cy1) - 2 * $relleno;
         $fw = imagesx($foto);
@@ -193,13 +213,53 @@ class ImagenOgProducto
         imagecopyresampled($lienzo, $foto, $cx1 + (int) (($cx2 - $cx1 - $dw) / 2), $cy1 + (int) (($cy2 - $cy1 - $dh) / 2), 0, 0, $dw, $dh, $fw, $fh);
         imagedestroy($foto);
 
-        // Logo Mr Lana (asset real de la marca) en la franja inferior.
+        $baloo = resource_path('fonts/Baloo2-ExtraBold.ttf');
+        $montserrat = resource_path('fonts/Montserrat-Bold.ttf');
+        $hayFuentes = function_exists('imagettftext') && is_file($baloo) && is_file($montserrat);
+
+        // Nombre del producto (máx. 2 líneas, centrado en la zona segura).
+        if ($hayFuentes) {
+            $blanco = imagecolorallocate($lienzo, 255, 255, 255);
+            $lineas = $this->lineas((string) $producto->nombre, $baloo, 28, 600, 2);
+            $y = count($lineas) === 1 ? 464 : 448;
+            foreach ($lineas as $texto) {
+                $this->textoCentrado($lienzo, $texto, $baloo, 28, $y, $blanco, $w / 2);
+                $y += 36;
+            }
+        }
+
+        // Fila inferior: logo real + pastilla con el precio publicado (o el dominio).
         $rutaLogo = resource_path('js/img/logo.png');
-        if (is_file($rutaLogo) && ($logo = @imagecreatefrompng($rutaLogo)) !== false) {
-            $lh = 52;
-            $lw = (int) round(imagesx($logo) * $lh / imagesy($logo));
-            imagecopyresampled($lienzo, $logo, 46, 560, 0, 0, $lw, $lh, imagesx($logo), imagesy($logo));
+        $logo = is_file($rutaLogo) ? @imagecreatefrompng($rutaLogo) : false;
+        $lh = 50;
+        $lw = $logo !== false ? (int) round(imagesx($logo) * $lh / imagesy($logo)) : 0;
+
+        $conPrecio = $precio !== null && $precio > 0;
+        $etiqueta = $conPrecio
+            ? '$'.number_format((float) $precio, 2).' MXN'
+            : (string) (parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'Mr Lana');
+        $tam = $conPrecio ? 22 : 17;
+        $pw = $hayFuentes ? $this->anchoTexto($etiqueta, $montserrat, $tam) + 44 : 0;
+        $ph = 50;
+        $gap = 22;
+        $x = (int) round(($w - ($lw + ($hayFuentes ? $gap + $pw : 0))) / 2);
+        $yFila = 530;
+
+        if ($logo !== false) {
+            imagecopyresampled($lienzo, $logo, $x, $yFila, 0, 0, $lw, $lh, imagesx($logo), imagesy($logo));
             imagedestroy($logo);
+        }
+
+        if ($hayFuentes) {
+            $px = $x + $lw + $gap;
+            $py = $yFila + 2;
+            for ($i = 0; $i <= $pw; $i++) {
+                $alto = $this->altoEnBorde($i, $pw, $ph);
+                $c = $this->color($lienzo, [0x73, 0xC8, 0x3A], [0x64, 0xCB, 0xD4], $i / max(1, $pw));
+                imageline($lienzo, $px + $i, $py + intdiv($ph - $alto, 2), $px + $i, $py + intdiv($ph + $alto, 2), $c);
+            }
+            $tinta = imagecolorallocate($lienzo, 0x0A, 0x1F, 0x17);
+            imagettftext($lienzo, $tam, 0, $px + 22, $py + (int) round($ph / 2 + $tam * 0.37), $tinta, $montserrat, $etiqueta);
         }
 
         // Franja inferior con el degradado de marca (#73C83A → #64CBD4).
@@ -214,6 +274,81 @@ class ImagenOgProducto
         imagedestroy($lienzo);
 
         return $ok && $jpg !== '' ? $jpg : null;
+    }
+
+    private function rectanguloRedondeado(\GdImage $img, int $x1, int $y1, int $x2, int $y2, int $r, int $color): void
+    {
+        imagefilledrectangle($img, $x1 + $r, $y1, $x2 - $r, $y2, $color);
+        imagefilledrectangle($img, $x1, $y1 + $r, $x1 + $r - 1, $y2 - $r, $color);
+        imagefilledrectangle($img, $x2 - $r + 1, $y1 + $r, $x2, $y2 - $r, $color);
+        foreach ([[$x1 + $r, $y1 + $r], [$x2 - $r, $y1 + $r], [$x1 + $r, $y2 - $r], [$x2 - $r, $y2 - $r]] as [$x, $y]) {
+            imagefilledarc($img, $x, $y, $r * 2, $r * 2, 0, 360, $color, IMG_ARC_PIE);
+        }
+    }
+
+    private function rombo(\GdImage $img, int $cx, int $cy, int $r, int $color): void
+    {
+        imagefilledpolygon($img, [$cx, $cy - $r, $cx + $r, $cy, $cx, $cy + $r, $cx - $r, $cy], $color);
+    }
+
+    /** Alto de la columna $i en una pastilla con extremos semicirculares. */
+    private function altoEnBorde(int $i, int $ancho, int $alto): int
+    {
+        $r = $alto / 2;
+        $d = min($i, $ancho - $i);
+
+        return $d >= $r ? $alto : (int) round(2 * sqrt(max(0, $r * $r - ($r - $d) ** 2)));
+    }
+
+    private function anchoTexto(string $texto, string $fuente, int $tam): int
+    {
+        $caja = imagettfbbox($tam, 0, $fuente, $texto);
+
+        return $caja === false ? 0 : (int) abs($caja[2] - $caja[0]);
+    }
+
+    private function textoCentrado(\GdImage $img, string $texto, string $fuente, int $tam, int $y, int $color, float $centro): void
+    {
+        imagettftext($img, $tam, 0, (int) round($centro - $this->anchoTexto($texto, $fuente, $tam) / 2), $y, $color, $fuente, $texto);
+    }
+
+    /**
+     * Parte el texto en líneas que caben en $ancho (máx. $max; si sobra, la última termina en "…").
+     *
+     * @return list<string>
+     */
+    private function lineas(string $texto, string $fuente, int $tam, int $ancho, int $max): array
+    {
+        $lineas = [];
+        $actual = '';
+
+        foreach (preg_split('/\s+/u', trim($texto)) ?: [] as $palabra) {
+            $prueba = $actual === '' ? $palabra : $actual.' '.$palabra;
+
+            if ($actual !== '' && $this->anchoTexto($prueba, $fuente, $tam) > $ancho) {
+                $lineas[] = $actual;
+                $actual = $palabra;
+            } else {
+                $actual = $prueba;
+            }
+        }
+
+        if ($actual !== '') {
+            $lineas[] = $actual;
+        }
+
+        if (count($lineas) > $max) {
+            $lineas = array_slice($lineas, 0, $max);
+            $lineas[$max - 1] .= '…';
+        }
+
+        return array_map(function (string $linea) use ($fuente, $tam, $ancho) {
+            while (mb_strlen($linea) > 2 && $this->anchoTexto($linea, $fuente, $tam) > $ancho) {
+                $linea = rtrim(mb_substr($linea, 0, -2), ' …').'…';
+            }
+
+            return $linea;
+        }, $lineas);
     }
 
     /**

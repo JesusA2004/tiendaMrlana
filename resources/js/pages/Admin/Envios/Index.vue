@@ -378,11 +378,11 @@ function registrarLote(soloId?: number) {
             description="Cuando haya pedidos en esta etapa aparecerán aquí."
         />
 
-        <ul v-else class="grid gap-3">
+        <ul v-else class="grid stagger-children gap-3">
             <li
                 v-for="p in pedidos.data"
                 :key="p.id"
-                class="rounded-2xl border bg-card p-4"
+                class="hover-lift rounded-2xl border bg-card p-4"
             >
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
                     <label

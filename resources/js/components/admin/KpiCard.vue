@@ -41,9 +41,8 @@ const urgente = computed(
         :href="href"
         :class="
             cn(
-                'group relative flex min-h-[7.5rem] flex-col justify-between gap-3 overflow-hidden rounded-2xl border bg-card p-4 transition',
-                href &&
-                    'hover:-translate-y-0.5 hover:border-brand-teal/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                'group relative flex min-h-[7.5rem] hover-lift flex-col justify-between gap-3 overflow-hidden rounded-2xl border bg-card p-4 shadow-brand-sm',
+                href && 'cursor-pointer focus-brand',
                 destacado &&
                     'border-transparent bg-brand-deep-pattern text-white shadow-lg',
             )
@@ -61,7 +60,7 @@ const urgente = computed(
             <span
                 v-if="icon"
                 :class="[
-                    'grid size-9 shrink-0 place-items-center rounded-xl',
+                    'grid size-9 shrink-0 place-items-center rounded-xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-6deg]',
                     destacado ? 'bg-white/15 text-brand-green' : TONO_ICONO[t],
                 ]"
             >

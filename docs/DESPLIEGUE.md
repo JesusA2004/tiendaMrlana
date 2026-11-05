@@ -38,9 +38,9 @@ npm ci
 npx puppeteer browsers install chrome-headless-shell   # Chrome para PDFs (Browsershot)
 npm run build
 php artisan migrate --force                             # sólo migraciones aditivas 2026_11_05_*
+php artisan storage:link                                 # si no existe public/storage (las fotos se sirven desde ahí)
 php artisan db:seed --class=MetodosPagoSeeder --force   # crea métodos faltantes; no pisa los existentes
-php artisan db:seed --class=CatalogoMueblesSeeder --force  # 25 muebles como "pendiente de aprobación" (idempotente)
-php artisan storage:link                                 # si no existe public/storage
+php artisan catalogo:importar-muebles --imagenes --publicar  # 25 muebles con fotos y precio del catálogo, publicados (idempotente)
 php artisan optimize:clear && php artisan optimize
 php artisan queue:restart
 php artisan up
@@ -48,6 +48,40 @@ php artisan up
 
 > No ejecutar `php artisan db:seed` sin `--class`: `DatabaseSeeder` ya no crea usuarios, pero
 > conviene correr sólo los seeders indicados.
+
+### 3.1 Catálogo de muebles 2026 (fotos + precios del catálogo, publicado)
+
+Decisión del dueño: los 25 muebles de `docs/catalogo/Catalogo_muebles_Mexico_2026.pdf` se publican con
+las fotos del PDF (ya extraídas al repo en `database/data/catalogo_muebles_mx_2026/imagenes/`, manifiesto
+`imagenes.json`) y con el precio del catálogo como precio de venta. Después de `git pull`, `migrate` y
+`storage:link`:
+
+```bash
+php artisan catalogo:importar-muebles --imagenes --publicar
+```
+
+- Idempotente: re-ejecutarlo no duplica fotos (sólo adjunta a modelos **sin** imágenes), no pisa precios
+  editados en el panel (sólo llena precio vacío) y no toca productos ya publicados o **pausados** por el admin.
+- Sin existencias capturadas los muebles quedan **"Bajo pedido"** (sin días de entrega hasta que el admin
+  los capture). Para venderlos de inventario: panel → Catálogo → editar existencias/modalidad.
+- Genera WebP en `storage/app/public/productos/{id}/` y la imagen para compartir en
+  `storage/app/public/og/productos/` (requiere GD con WebP: `php -r 'var_dump(function_exists("imagewebp"));'`).
+- `--dry-run` muestra lo que haría sin escribir. `--forzar-precios` re-sincroniza el precio de venta con el del
+  catálogo aunque el admin ya lo haya cambiado (no usar salvo que el dueño lo pida).
+- Alternativa vía seeder: `CATALOGO_MUEBLES_PUBLICAR=true` en `.env` + `php artisan config:clear` +
+  `php artisan db:seed --class=CatalogoMueblesSeeder --force` (sin la variable sólo crea/actualiza como pendientes).
+- Si algún modelo no se publica, la salida lo lista con el motivo ("No publicado ML-MUE-…: …").
+
+Verificación:
+
+```bash
+php artisan catalogo:importar-muebles --imagenes --publicar   # 2ª corrida: "0 con cambios, 25 sin cambios"
+php artisan tinker --execute='echo App\Models\Producto::publicados()->count();'   # 25 (o más si hay otros productos)
+ls storage/app/public/productos | wc -l                       # una carpeta por producto con fotos
+curl -sI https://tienda.mr-lana.com/storage/$(php artisan tinker --execute='echo App\Models\Producto::where("sku","ML-MUE-90243297")->value("imagen_principal");') | head -1   # 200
+```
+
+En el navegador: `/productos` muestra los muebles con foto, precio y "Bajo pedido".
 
 Primer administrador (si no existe uno con contraseña segura):
 
@@ -112,7 +146,7 @@ stopwaitsecs=3600
 3. Reglas de envío. Sin reglas, todo pedido a domicilio queda "por cotizar".
 4. Métodos de pago: transferencia y efectivo presencial; contra entrega sólo si se define zona.
 5. Políticas, FAQ y beneficios del home.
-6. Catálogo → Aprobación: capturar precio, existencias o "bajo pedido", imágenes autorizadas y publicar.
+6. Catálogo: los 25 muebles ya quedan publicados (§3.1) con precio del catálogo y "bajo pedido"; capturar existencias reales y ajustar precios si hace falta.
 7. SEO: dar de alta `https://tienda.mr-lana.com/sitemap.xml` en Google Search Console (ver §8.1).
 
 ## 8. Verificación posterior
@@ -136,7 +170,9 @@ no se usa SSR de Inertia (ningún proceso extra). Todas las URL salen de `APP_UR
   corre con `APP_ENV=production`, poner `SEO_INDEXAR=false` en su `.env`** (y `config:cache`).
   Nginx: si hay un `location = /robots.txt { ... }` con `try_files` sólo a archivo, cambiarlo a
   `try_files $uri /index.php?$query_string;` o quitarlo.
-- **Imagen OG general**: `public/icons/og-image.jpg` (1200x630, JPG < 300 KB).
+- **Imagen OG general**: `public/icons/og-image.jpg` (1200x630, JPG < 300 KB, todo lo importante en la
+  zona central para el recorte cuadrado de WhatsApp). Se regenera con `npm run og:image`
+  (`resources/og/og-image.html` + Puppeteer; fuentes de marca en `resources/fonts`).
 - **Imagen OG por producto**: JPG 1200x630 con fondo de marca y la foto principal, en
   `storage/app/public/og/productos/{id}-{hash}.jpg` (requiere `php artisan storage:link` y que PHP
   pueda escribir en `storage/app/public`). Se regenera al cambiar la imagen principal desde el panel
@@ -156,6 +192,28 @@ Depuradores: Facebook Sharing Debugger (https://developers.facebook.com/tools/de
 para refrescar la caché, que también usa WhatsApp), validador de datos estructurados
 (https://validator.schema.org/) y Rich Results Test de Google. WhatsApp guarda en caché la vista
 previa de cada URL: tras corregir algo, probar con la URL agregando `?v=2`.
+
+### Aparecer en Google ("mr lana", "tienda mr lana")
+
+El sitio ya emite título y descripción con la marca, H1 "Tienda Mr Lana" en el home, JSON-LD
+`Organization`/`OnlineStore` + `WebSite` con `name: "Mr Lana"` y `alternateName` ("Tienda Mr Lana",
+"Mr. Lana", "MrLana", "Mr Lana Tienda"; `config/seo.php`) y sitemap. Falta darlo de alta:
+
+1. **Search Console** (https://search.google.com/search-console) → *Agregar propiedad*.
+   - Recomendado: propiedad de **dominio** `mr-lana.com` verificada con un registro **TXT** en el DNS.
+   - Alternativa: propiedad de **prefijo de URL** `https://tienda.mr-lana.com/` con *Etiqueta HTML*:
+     copiar sólo el valor de `content` a `SEO_GOOGLE_VERIFICATION=` en `.env`, `php artisan config:cache`
+     y pulsar *Verificar*. (Bing Webmaster Tools: igual con `SEO_BING_VERIFICATION=`, o importar desde
+     Search Console).
+2. **Sitemaps** → enviar `https://tienda.mr-lana.com/sitemap.xml`.
+3. **Inspección de URLs** → `https://tienda.mr-lana.com/` → *Solicitar indexación* (repetir con el
+   catálogo y 2–3 productos importantes).
+4. **Google Business Profile** (https://business.google.com): crear/reclamar el perfil "Mr Lana" con la
+   URL de la tienda y los datos reales del negocio; es lo que muestra el panel de marca en las búsquedas.
+5. Enlazar `https://tienda.mr-lana.com` desde las redes sociales y el sitio principal de Mr Lana, y
+   capturar esas redes en el panel (Configuración → redes): alimentan `sameAs` del JSON-LD.
+
+Indexar toma de días a algunas semanas; el avance se ve en Search Console → *Páginas* y *Rendimiento*.
 
 ## 9. Reversión
 

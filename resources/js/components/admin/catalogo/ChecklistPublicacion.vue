@@ -33,7 +33,7 @@ const extras = computed(() =>
         <li
             v-for="item in items"
             :key="item.clave"
-            class="flex items-start gap-2 text-sm"
+            class="flex animate-fade-up items-start gap-2 text-sm"
         >
             <CircleCheck
                 v-if="item.ok"

@@ -18,7 +18,7 @@ const beneficios = [
 
 <template>
     <div
-        class="min-h-svh bg-surface lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+        class="min-h-svh bg-brand-app lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
     >
         <!-- Panel de marca (escritorio) -->
         <aside
@@ -54,7 +54,7 @@ const beneficios = [
                     Muebles y artículos para tu
                     <span class="text-brand-gradient">hogar</span>
                 </p>
-                <ul class="mt-8 space-y-4">
+                <ul class="mt-8 stagger-children space-y-4">
                     <li
                         v-for="beneficio in beneficios"
                         :key="beneficio.texto"
@@ -138,10 +138,16 @@ const beneficios = [
             <main
                 class="flex flex-1 flex-col items-center px-4 pb-10 sm:px-6 lg:justify-center lg:py-12"
             >
-                <div class="relative z-10 -mt-8 w-full max-w-md lg:mt-0">
+                <div
+                    class="relative z-10 -mt-8 w-full max-w-md animate-scale-in lg:mt-0"
+                >
                     <div
-                        class="rounded-3xl border border-border/70 bg-card p-6 text-card-foreground shadow-[0_24px_60px_-30px_rgba(20,51,43,0.35)] sm:p-8"
+                        class="relative overflow-hidden rounded-3xl border border-border/70 bg-card p-6 text-card-foreground shadow-[0_24px_60px_-30px_rgba(20,51,43,0.45)] transition-shadow duration-300 hover:shadow-[0_30px_70px_-30px_rgba(20,51,43,0.55)] sm:p-8"
                     >
+                        <span
+                            class="absolute inset-x-0 top-0 h-1.5 bg-brand-gradient"
+                            aria-hidden="true"
+                        />
                         <div class="mb-6 space-y-2 text-center sm:mb-8">
                             <h1
                                 class="font-display text-2xl leading-tight font-bold tracking-tight text-balance sm:text-3xl"
@@ -162,7 +168,7 @@ const beneficios = [
                     <div class="mt-6 text-center">
                         <Link
                             href="/"
-                            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-brand-green-strong focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-card/70 hover:text-brand-green-strong focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                         >
                             <ArrowLeft class="size-4" aria-hidden="true" />
                             Volver a la tienda

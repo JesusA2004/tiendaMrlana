@@ -263,7 +263,9 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
                 />
 
                 <!-- Información de compra -->
-                <div class="lg:sticky lg:top-28 lg:self-start">
+                <div
+                    class="rounded-3xl bg-card p-5 ring-1 shadow-brand-sm ring-border/70 sm:p-7 lg:sticky lg:top-28 lg:self-start"
+                >
                     <div class="flex flex-wrap items-center gap-2">
                         <Link
                             v-if="producto.marca"
@@ -274,7 +276,7 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
                         </Link>
                         <span
                             v-if="producto.tiene_oferta && descuento > 0"
-                            class="rounded-full bg-brand-ink px-2.5 py-1 text-[11px] font-bold text-white dark:bg-white dark:text-brand-ink"
+                            class="rounded-full bg-brand-ink px-2.5 py-1 text-[11px] font-bold text-white"
                             >−{{ descuento }}%</span
                         >
                     </div>
@@ -403,7 +405,7 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
                         class="mt-6 flex flex-col gap-3 sm:flex-row"
                     >
                         <div
-                            class="flex h-14 items-center justify-between rounded-full border bg-background px-1.5 sm:w-40"
+                            class="flex h-14 items-center justify-between rounded-full border bg-card px-1.5 sm:w-40"
                             :class="{ 'opacity-50': !puedeComprar }"
                         >
                             <button
@@ -445,7 +447,7 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
 
                         <button
                             type="button"
-                            class="group inline-flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-8 text-base font-semibold text-primary-foreground shadow-[0_12px_30px_-12px_rgba(115,200,58,0.9)] transition-[transform,background-color] hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none sm:w-auto sm:flex-1"
+                            class="group shine inline-flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-8 text-base font-semibold text-primary-foreground shadow-[0_12px_30px_-12px_rgba(115,200,58,0.9)] transition-[transform,background-color] hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none sm:w-auto sm:flex-1"
                             :disabled="!puedeComprar || enviando !== null"
                             @click="comprar"
                         >
@@ -465,7 +467,7 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
                     <ul class="mt-6 grid gap-3 text-sm sm:grid-cols-2">
                         <li
                             v-if="metodosPago.length"
-                            class="flex items-start gap-3 rounded-2xl border border-border/70 p-3.5"
+                            class="flex hover-lift items-start gap-3 rounded-2xl border border-border/70 bg-surface/60 p-3.5"
                         >
                             <span
                                 class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-brand-green-strong [&>svg]:size-[18px]"
@@ -484,7 +486,7 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
                             </span>
                         </li>
                         <li
-                            class="flex items-start gap-3 rounded-2xl border border-border/70 p-3.5"
+                            class="flex hover-lift items-start gap-3 rounded-2xl border border-border/70 bg-surface/60 p-3.5"
                         >
                             <span
                                 class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-brand-green-strong"
@@ -537,7 +539,7 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
                     "
                 >
                     <TabsList
-                        class="h-12 w-full justify-start gap-1 rounded-full bg-muted p-1 sm:w-fit"
+                        class="h-12 w-full justify-start gap-1 rounded-full bg-card p-1 ring-1 shadow-brand-sm ring-border/70 sm:w-fit"
                     >
                         <TabsTrigger
                             v-if="descripcionCompleta"
@@ -561,7 +563,7 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
                         class="mt-6 animate-in duration-300 fade-in"
                     >
                         <div
-                            class="max-w-3xl text-[15px] leading-[1.8] whitespace-pre-line text-foreground/85"
+                            class="max-w-3xl rounded-3xl bg-card p-6 text-[15px] leading-[1.8] whitespace-pre-line text-foreground/85 ring-1 shadow-brand-sm ring-border/70 sm:p-8"
                         >
                             {{ descripcionCompleta }}
                         </div>
@@ -573,12 +575,12 @@ useIntersectionObserver(botonPrincipal, ([entrada]) => {
                         class="mt-6 animate-in duration-300 fade-in"
                     >
                         <dl
-                            class="grid max-w-4xl overflow-hidden rounded-3xl border border-border/70 sm:grid-cols-2"
+                            class="grid max-w-4xl overflow-hidden rounded-3xl border border-border/70 bg-card shadow-brand-sm sm:grid-cols-2"
                         >
                             <div
                                 v-for="(dato, i) in especificaciones"
                                 :key="`${dato.nombre}-${i}`"
-                                class="flex flex-col gap-0.5 border-b border-border/70 px-5 py-4 sm:odd:border-r"
+                                class="flex flex-col gap-0.5 border-b border-border/70 px-5 py-4 transition-colors duration-200 hover:bg-brand-green-soft/50 sm:odd:border-r"
                             >
                                 <dt
                                     class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"

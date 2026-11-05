@@ -37,13 +37,22 @@ const rechazado = computed(
 <template>
     <Head :title="`Pedido ${pedido.folio}`" />
 
-    <section class="bg-brand-deep-gradient text-white">
-        <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <section class="relative overflow-hidden bg-brand-deep-pattern text-white">
+        <div
+            class="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-brand-green/25 blur-3xl"
+            aria-hidden="true"
+        />
+        <div
+            class="relative mx-auto w-full max-w-5xl animate-fade-up px-4 py-8 sm:px-6 lg:px-8"
+        >
             <Link
                 :href="pedidosRutas.index.url()"
-                class="inline-flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white"
+                class="group inline-flex items-center gap-1 rounded-full py-1 pr-3 pl-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:outline-none"
             >
-                <ArrowLeft class="size-4" aria-hidden="true" />
+                <ArrowLeft
+                    class="size-4 transition-transform group-hover:-translate-x-1"
+                    aria-hidden="true"
+                />
                 Mis pedidos
             </Link>
             <div class="mt-4 flex flex-wrap items-end gap-4">
@@ -62,7 +71,7 @@ const rechazado = computed(
                         <CopiarTexto
                             :valor="pedido.folio"
                             etiqueta="Copiar folio"
-                            class="text-foreground"
+                            tono="oscuro"
                         />
                     </div>
                     <p class="mt-1 text-sm text-white/75">
@@ -70,9 +79,13 @@ const rechazado = computed(
                         {{ pedido.metodo_pago_label }}
                     </p>
                 </div>
-                <div class="ml-auto text-right">
-                    <p class="text-xs text-white/70 uppercase">Total</p>
-                    <p class="font-display text-3xl font-extrabold">
+                <div
+                    class="ml-auto rounded-2xl bg-white/10 px-4 py-2 text-right ring-1 ring-white/15"
+                >
+                    <p class="text-xs text-white/75 uppercase">Total</p>
+                    <p
+                        class="font-display text-3xl font-extrabold tabular-nums"
+                    >
                         {{ moneda(pedido.total) }}
                     </p>
                 </div>
@@ -86,10 +99,13 @@ const rechazado = computed(
                     as-child
                     size="sm"
                     variant="outline"
-                    class="ml-auto rounded-full border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    class="group ml-auto rounded-full border-white/40 bg-transparent text-white hover:-translate-y-0.5 hover:border-white hover:bg-white/10 hover:text-white"
                 >
                     <a :href="props.urls.pdf" target="_blank" rel="noopener">
-                        <FileDown aria-hidden="true" />
+                        <FileDown
+                            class="transition-transform group-hover:translate-y-0.5"
+                            aria-hidden="true"
+                        />
                         Descargar PDF
                     </a>
                 </Button>
@@ -97,10 +113,12 @@ const rechazado = computed(
         </div>
     </section>
 
-    <div class="mx-auto w-full max-w-5xl space-y-5 px-4 py-8 sm:px-6 lg:px-8">
+    <div
+        class="mx-auto w-full max-w-5xl stagger-children space-y-5 px-4 py-8 sm:px-6 lg:px-8"
+    >
         <div
             v-if="rechazado"
-            class="flex gap-3 rounded-3xl border border-destructive/30 bg-destructive/5 p-5"
+            class="flex gap-3 rounded-3xl border border-destructive/30 bg-card p-5 shadow-brand-sm"
             role="alert"
         >
             <AlertTriangle

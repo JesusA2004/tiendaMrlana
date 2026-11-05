@@ -239,7 +239,7 @@ function confirmar(): void {
 <template>
     <Head title="Categorías" />
 
-    <div class="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
+    <div class="w-full animate-page-in space-y-6 p-4 md:p-6">
         <header
             class="flex flex-col gap-4 rounded-2xl bg-brand-deep-pattern px-5 py-6 text-white md:flex-row md:items-end md:justify-between md:px-8"
         >
@@ -262,7 +262,7 @@ function confirmar(): void {
         </header>
 
         <section
-            class="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row"
+            class="flex animate-fade-up flex-col gap-3 surface-card rounded-xl border bg-card p-4 sm:flex-row"
             aria-label="Filtros"
         >
             <div class="relative flex-1">
@@ -296,39 +296,44 @@ function confirmar(): void {
             v-if="!categorias.length"
             class="rounded-2xl border border-dashed bg-surface/60 px-6 py-14 text-center"
         >
-            <FolderTree class="mx-auto size-10 text-brand-green" />
+            <FolderTree
+                class="mx-auto size-10 animate-scale-in text-brand-green-strong"
+            />
             <p class="mt-3 font-display text-xl font-semibold">
                 No hay categorías
             </p>
         </div>
 
-        <ul v-else class="divide-y overflow-hidden rounded-xl border bg-card">
+        <ul
+            v-else
+            class="stagger-children divide-y overflow-hidden surface-card rounded-xl border bg-card"
+        >
             <li
                 v-for="c in categorias"
                 :key="c.id"
-                class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+                class="group flex flex-col gap-3 p-4 transition-colors duration-200 hover:bg-brand-green-soft/60 sm:flex-row sm:items-center"
                 :style="{ paddingLeft: `${1 + c.nivel * 1.5}rem` }"
             >
                 <div class="flex min-w-0 flex-1 items-center gap-3">
                     <CornerDownRight
                         v-if="c.nivel > 0"
-                        class="size-4 shrink-0 text-muted-foreground"
+                        class="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-brand-green-strong"
                     />
                     <div
-                        class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted"
+                        class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted transition-shadow duration-300 group-hover:shadow-brand"
                     >
                         <img
                             v-if="c.imagen"
                             :src="c.imagen"
                             :alt="c.nombre"
-                            class="size-full object-cover"
+                            class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                             loading="lazy"
                         />
                         <ImageOff v-else class="size-4 text-muted-foreground" />
                     </div>
                     <div class="min-w-0">
                         <p
-                            class="flex flex-wrap items-center gap-2 font-semibold"
+                            class="flex flex-wrap items-center gap-2 font-semibold transition-colors group-hover:text-brand-green-strong"
                         >
                             {{ c.nombre }}
                             <EstadoBadge
@@ -350,7 +355,7 @@ function confirmar(): void {
                             productosIndex({ query: { categoria_id: c.id } })
                                 .url
                         "
-                        class="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold tabular-nums hover:bg-brand-green-soft"
+                        class="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold tabular-nums transition-colors hover:bg-brand-green-soft hover:text-brand-green-strong"
                         >{{ c.productos_count }} productos</a
                     >
                     <Button

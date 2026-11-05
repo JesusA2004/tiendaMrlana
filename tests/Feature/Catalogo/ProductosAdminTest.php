@@ -218,7 +218,7 @@ it('el formulario de producto no modifica existencias y valida el precio de comp
     expect($producto->stock)->toBe(5)
         ->and((float) $producto->precio)->toBe(1500.0)
         ->and($producto->descripcion)->toBe('alert(1)Mesa robusta')
-        ->and($producto->atributos)->toBe([['nombre' => 'Material', 'valor' => 'Pino']]);
+        ->and($producto->atributos)->toEqual([['nombre' => 'Material', 'valor' => 'Pino']]); // MySQL JSON reordena llaves.
 });
 
 it('crea productos como borrador con existencia inicial registrada como movimiento', function () {

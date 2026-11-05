@@ -34,6 +34,8 @@ final class Seo implements Arrayable
 
     private ?string $tituloSocial = null;
 
+    private ?string $tituloDocumento = null;
+
     private ?string $descripcion = null;
 
     private ?string $canonical = null;
@@ -70,6 +72,14 @@ final class Seo implements Arrayable
     public function titulo(?string $titulo): self
     {
         $this->titulo = self::limpiar($titulo, 70, false);
+
+        return $this;
+    }
+
+    /** <title> completo, sin el sufijo de marca (p. ej. el home: "Mr Lana | Tienda en línea…"). */
+    public function tituloDocumento(?string $titulo): self
+    {
+        $this->tituloDocumento = self::limpiar($titulo, 90, false);
 
         return $this;
     }
@@ -145,7 +155,12 @@ final class Seo implements Arrayable
 
     // ------------------------------------------------------------------ JSON-LD
 
-    /** Organization + WebSite (con SearchAction al catálogo). */
+    /**
+     * Organization/OnlineStore + WebSite (con SearchAction al catálogo).
+     *
+     * `name` + `alternateName` del WebSite es lo que Google usa para el "nombre del sitio" en
+     * los resultados; así "mr lana" y "tienda mr lana" se asocian a la misma entidad.
+     */
     public function conOrganizacion(): self
     {
         $config = app(ConfiguracionTienda::class);
@@ -158,11 +173,18 @@ final class Seo implements Arrayable
 
         $contacto = $config->contacto();
         $organizacion = array_filter([
-            '@type' => 'Organization',
+            '@type' => ['Organization', 'OnlineStore'],
             '@id' => $base.'/#organizacion',
             'name' => self::sitio(),
+            'alternateName' => self::nombresAlternos() ?: null,
+            'description' => (string) config('seo.descripcion'),
             'url' => $base.'/',
-            'logo' => self::absoluta('/icons/icon-512.png'),
+            'logo' => [
+                '@type' => 'ImageObject',
+                'url' => self::absoluta('/icons/icon-512.png'),
+                'width' => 512,
+                'height' => 512,
+            ],
             'image' => self::absoluta((string) config('seo.imagen.ruta')),
             'email' => $contacto['correo'] ?? null,
             'telephone' => $contacto['telefono'] ?? null,
@@ -171,10 +193,11 @@ final class Seo implements Arrayable
 
         $this->jsonLd($organizacion);
 
-        $this->jsonLd([
+        $this->jsonLd(array_filter([
             '@type' => 'WebSite',
             '@id' => $base.'/#sitio',
             'name' => self::sitio(),
+            'alternateName' => self::nombresAlternos() ?: null,
             'url' => $base.'/',
             'inLanguage' => 'es-MX',
             'publisher' => ['@id' => $base.'/#organizacion'],
@@ -186,7 +209,7 @@ final class Seo implements Arrayable
                 ],
                 'query-input' => 'required name=search_term_string',
             ],
-        ]);
+        ], fn ($v) => $v !== null));
 
         return $this;
     }
@@ -219,6 +242,7 @@ final class Seo implements Arrayable
      *     canonical: ?string, robots: string, tipo: string, sitio: string, locale: string,
      *     imagen: array{url: string, secure_url: ?string, ancho: ?int, alto: ?int, tipo: ?string, alt: string},
      *     producto: array{precio: string, moneda: string, disponibilidad: string}|null,
+     *     verificacion: array{google: ?string, bing: ?string},
      *     json_ld: list<array<string, mixed>>
      * }
      */
@@ -226,6 +250,7 @@ final class Seo implements Arrayable
     {
         $sitio = self::sitio();
         $nombreApp = (string) config('app.name', $sitio);
+        $verificacion = (array) config('seo.verificacion', []);
 
         $descripcion = $this->descripcion
             ?? self::limpiar(app(ConfiguracionTienda::class)->string('seo.descripcion'), 160)
@@ -251,7 +276,9 @@ final class Seo implements Arrayable
         return [
             'titulo' => $this->titulo,
             // Igual que el callback `title` de resources/js/app.ts ("<título> - APP_NAME").
-            'titulo_documento' => $this->titulo ? $this->titulo.' - '.$nombreApp : $nombreApp,
+            // Patrón "{Página} | Mr Lana Tienda"; el home define el suyo completo con tituloDocumento().
+            'titulo_documento' => $this->tituloDocumento
+                ?? ($this->titulo ? $this->titulo.' | '.$sitio.' Tienda' : (string) config('seo.titulo_home', $nombreApp)),
             'titulo_social' => $this->tituloSocial ?? $this->titulo ?? $sitio,
             'descripcion' => $descripcion,
             'canonical' => $this->canonical,
@@ -261,6 +288,10 @@ final class Seo implements Arrayable
             'locale' => (string) config('seo.locale', 'es_MX'),
             'imagen' => $imagen,
             'producto' => $this->producto,
+            'verificacion' => [
+                'google' => filled($verificacion['google'] ?? null) ? (string) $verificacion['google'] : null,
+                'bing' => filled($verificacion['bing'] ?? null) ? (string) $verificacion['bing'] : null,
+            ],
             'json_ld' => array_map(fn (array $nodo) => ['@context' => 'https://schema.org'] + $nodo, $this->jsonLd),
         ];
     }
@@ -276,6 +307,12 @@ final class Seo implements Arrayable
     public static function sitio(): string
     {
         return (string) config('seo.sitio', 'Mr Lana');
+    }
+
+    /** @return list<string> Variantes con que la gente busca la marca ("Tienda Mr Lana", "MrLana"…). */
+    public static function nombresAlternos(): array
+    {
+        return array_values(array_filter((array) config('seo.nombres_alternos', []), 'is_string'));
     }
 
     /**

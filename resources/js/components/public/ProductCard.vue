@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { Clock3, ImageOff, Loader2, ShoppingBag } from 'lucide-vue-next';
+import {
+    ArrowRight,
+    Clock3,
+    ImageOff,
+    Loader2,
+    ShoppingBag,
+} from 'lucide-vue-next';
 import { computed } from 'vue';
 import { moneda, porcentajeDescuento, urls } from './tienda';
 import type { ProductoTarjeta } from './types';
@@ -35,7 +41,7 @@ const cargando = computed(() => enviando.value === props.producto.id);
 
 <template>
     <article
-        class="group/card relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card transition-[box-shadow,transform,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-brand-green/40 hover:shadow-[0_18px_40px_-18px_rgba(20,51,43,0.35)] motion-reduce:transform-none motion-reduce:transition-none"
+        class="group/card relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-brand-sm transition-[box-shadow,transform,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-within:border-brand-green/60 hover:-translate-y-1.5 hover:border-brand-green/50 hover:shadow-[0_24px_46px_-22px_rgba(63,138,28,0.55),0_8px_18px_-12px_rgba(31,77,58,0.3)] motion-reduce:transform-none motion-reduce:transition-none"
     >
         <div class="relative aspect-[4/5] overflow-hidden bg-surface">
             <img
@@ -45,7 +51,7 @@ const cargando = computed(() => enviando.value === props.producto.id);
                 :loading="prioridad ? 'eager' : 'lazy'"
                 :fetchpriority="prioridad ? 'high' : 'auto'"
                 decoding="async"
-                class="size-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-[1.06] motion-reduce:transition-none motion-reduce:group-hover/card:scale-100"
+                class="size-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-[1.08] motion-reduce:transition-none motion-reduce:group-hover/card:scale-100"
                 :class="{ 'opacity-60 grayscale-[35%]': agotado }"
             />
             <div
@@ -56,13 +62,29 @@ const cargando = computed(() => enviando.value === props.producto.id);
                 <span class="text-xs">Imagen no disponible</span>
             </div>
 
+            <!-- Velo verde y botón "Ver producto" que aparecen al pasar el cursor (sólo con puntero) -->
+            <span
+                class="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-deep/45 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover/card:opacity-100"
+                aria-hidden="true"
+            />
+            <span
+                v-if="!agotado && producto.disponibilidad !== 'bajo_pedido'"
+                class="pointer-events-none absolute inset-x-3 bottom-3 hidden translate-y-3 items-center justify-center gap-1.5 rounded-full bg-white/95 py-2 text-xs font-semibold text-brand-deep opacity-0 shadow-md transition-[opacity,transform] duration-300 ease-out group-hover/card:translate-y-0 group-hover/card:opacity-100 motion-reduce:translate-y-0 [@media(hover:hover)]:flex"
+                aria-hidden="true"
+            >
+                Ver producto
+                <ArrowRight
+                    class="size-3.5 transition-transform duration-300 group-hover/card:translate-x-0.5"
+                />
+            </span>
+
             <!-- Insignias -->
             <div
                 class="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-1.5"
             >
                 <span
                     v-if="producto.tiene_oferta && descuento > 0"
-                    class="rounded-full bg-brand-ink px-2.5 py-1 text-[11px] font-bold tracking-wide text-white shadow-sm dark:bg-white dark:text-brand-ink"
+                    class="rounded-full bg-brand-ink px-2.5 py-1 text-[11px] font-bold tracking-wide text-white shadow-sm"
                 >
                     −{{ descuento }}%
                 </span>
@@ -76,7 +98,7 @@ const cargando = computed(() => enviando.value === props.producto.id);
 
             <span
                 v-if="agotado"
-                class="absolute inset-x-3 bottom-3 rounded-full bg-white/95 py-1.5 text-center text-xs font-semibold text-foreground shadow-sm dark:bg-black/80"
+                class="absolute inset-x-3 bottom-3 rounded-full bg-white/95 py-1.5 text-center text-xs font-semibold text-foreground shadow-sm"
             >
                 Agotado
             </span>
@@ -145,7 +167,7 @@ const cargando = computed(() => enviando.value === props.producto.id);
 
                 <button
                     type="button"
-                    class="relative z-10 ml-auto inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-[transform,background-color,opacity] duration-200 hover:scale-105 hover:bg-brand-teal focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:scale-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:hover:scale-100"
+                    class="shine relative z-10 ml-auto inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-[transform,background-color,opacity,box-shadow] duration-200 group-hover/card:shadow-[0_8px_18px_-8px_rgba(63,138,28,0.8)] hover:scale-110 hover:bg-brand-teal focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:scale-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:hover:scale-100"
                     :disabled="agotado || cargando"
                     :aria-label="
                         agotado

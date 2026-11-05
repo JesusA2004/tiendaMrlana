@@ -40,8 +40,7 @@ export function formatoFecha(
 export const clasesTono: Record<Tono, string> = {
     neutral: 'bg-muted text-muted-foreground border-border',
     info: 'bg-brand-teal-soft text-brand-teal-strong border-brand-teal/30',
-    warning:
-        'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900',
+    warning: 'bg-amber-50 text-amber-800 border-amber-200 ',
     success:
         'bg-brand-green-soft text-brand-green-strong border-brand-green/30',
     danger: 'bg-destructive/10 text-destructive border-destructive/30',

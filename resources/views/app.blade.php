@@ -1,38 +1,20 @@
 <!DOCTYPE html>
-<html lang="es-MX" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
+<html lang="es-MX">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-        {{-- Detecta el modo oscuro del sistema antes de pintar --}}
-        <script>
-            (function() {
-                const appearance = '{{ $appearance ?? "system" }}';
-
-                if (appearance === 'system') {
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-                    if (prefersDark) {
-                        document.documentElement.classList.add('dark');
-                    }
-                }
-            })();
-        </script>
-
+        <meta name="color-scheme" content="light">
         <style>
             html {
-                background-color: #ffffff;
-            }
-
-            html.dark {
-                background-color: #0b1110;
+                color-scheme: light;
+                background-color: #eef7e8;
             }
         </style>
 
         {{-- Identidad / PWA --}}
-        <meta name="theme-color" content="#73C83A" media="(prefers-color-scheme: light)">
-        <meta name="theme-color" content="#14332B" media="(prefers-color-scheme: dark)">
-        <meta name="application-name" content="Mr Lana Tienda">
+        <meta name="theme-color" content="#73C83A">
+        <meta name="application-name" content="Mr Lana">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -62,6 +44,8 @@
             <meta name="robots" data-inertia="robots" content="{{ $seo['robots'] }}">
             @if ($seo['canonical'])
                 <link rel="canonical" data-inertia="canonical" href="{{ $seo['canonical'] }}">
+                <link rel="alternate" hreflang="es-MX" data-inertia="hreflang:es-MX" href="{{ $seo['canonical'] }}">
+                <link rel="alternate" hreflang="x-default" data-inertia="hreflang:x-default" href="{{ $seo['canonical'] }}">
                 <meta property="og:url" data-inertia="og:url" content="{{ $seo['canonical'] }}">
             @endif
             <meta property="og:site_name" data-inertia="og:site_name" content="{{ $seo['sitio'] }}">
@@ -92,6 +76,13 @@
             <meta name="twitter:image" data-inertia="twitter:image" content="{{ $seo['imagen']['url'] }}">
             <meta name="twitter:image:alt" data-inertia="twitter:image:alt" content="{{ $seo['imagen']['alt'] }}">
         </x-inertia::head>
+        {{-- Verificación de Search Console / Bing (SEO_GOOGLE_VERIFICATION, SEO_BING_VERIFICATION). --}}
+        @if ($seo['verificacion']['google'] ?? null)
+            <meta name="google-site-verification" content="{{ $seo['verificacion']['google'] }}">
+        @endif
+        @if ($seo['verificacion']['bing'] ?? null)
+            <meta name="msvalidate.01" content="{{ $seo['verificacion']['bing'] }}">
+        @endif
         {{-- Datos estructurados (sólo servidor; JSON_HEX_TAG evita cerrar el <script>). --}}
         @foreach ($seo['json_ld'] ?? [] as $nodo)
             <script type="application/ld+json">{!! json_encode($nodo, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>

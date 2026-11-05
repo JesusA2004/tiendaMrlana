@@ -331,7 +331,7 @@ const conversion = computed(() => {
                         Operación ahora
                     </h2>
                     <div
-                        class="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4"
+                        class="grid stagger-children grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4"
                     >
                         <KpiCard
                             v-if="esAdmin"
@@ -490,7 +490,9 @@ const conversion = computed(() => {
                     >
                         Catálogo
                     </h2>
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div
+                        class="grid stagger-children grid-cols-1 gap-3 sm:grid-cols-3"
+                    >
                         <KpiCard
                             label="Productos publicados"
                             :value="catalogo.publicados"

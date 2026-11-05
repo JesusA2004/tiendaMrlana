@@ -37,7 +37,7 @@ const rol = computed(() => {
 
 <template>
     <header
-        class="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border/70 bg-background/85 px-4 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 supports-[backdrop-filter]:bg-background/70 md:rounded-t-xl"
+        class="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-border/80 glass-header px-4 shadow-[0_1px_0_rgb(255_255_255/0.6)] transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:rounded-t-xl"
     >
         <div class="flex min-w-0 flex-1 items-center gap-2">
             <SidebarTrigger class="-ml-1" />
@@ -57,7 +57,7 @@ const rol = computed(() => {
             >
             <a
                 href="/"
-                class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition hover:border-brand-green hover:bg-brand-green-soft"
+                class="inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1.5 text-xs font-semibold hover-glow transition hover:border-brand-green hover:bg-brand-green-soft hover:text-brand-deep"
             >
                 <Store class="size-3.5" />
                 <span class="hidden sm:inline">Ver tienda</span>

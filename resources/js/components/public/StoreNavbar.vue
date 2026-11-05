@@ -65,6 +65,14 @@ const busquedaActual = computed(() => {
     return new URLSearchParams(consulta).get('q') ?? '';
 });
 const rutaActual = computed(() => (page.url ?? '/').split('?')[0]);
+const categoriaActual = computed(() => {
+    const url = page.url ?? '';
+    const consulta = url.includes('?') ? url.split('?')[1] : '';
+
+    return new URLSearchParams(consulta).get('categoria');
+});
+// Franja de categorías siempre visible (las 10 con más productos, en el orden del menú).
+const categoriasFranja = computed(() => categorias.value.slice(0, 10));
 
 // Pequeño rebote del contador del carrito cuando cambia.
 const rebote = ref(false);
@@ -95,8 +103,11 @@ onMounted(() => {
         window as Window & { requestIdleCallback?: (cb: () => void) => number }
     ).requestIdleCallback;
 
+    // La franja de categorías las necesita pronto: en reposo o, si no hay soporte, al instante.
     if (ric) {
         ric(() => cargar());
+    } else {
+        cargar();
     }
 });
 
@@ -350,7 +361,7 @@ function iniciales(nombre: string): string {
                 <!-- Carrito -->
                 <Link
                     :href="urls.carrito"
-                    class="relative inline-flex h-11 items-center gap-2 rounded-full bg-brand-ink pr-4 pl-3.5 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-brand-deep active:scale-95 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+                    class="relative inline-flex h-11 items-center gap-2 rounded-full bg-brand-ink pr-4 pl-3.5 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-brand-deep active:scale-95"
                     :aria-label="`Carrito, ${cantidad} ${cantidad === 1 ? 'artículo' : 'artículos'}`"
                 >
                     <ShoppingBag class="size-[18px]" aria-hidden="true" />
@@ -359,8 +370,8 @@ function iniciales(nombre: string): string {
                         class="inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-xs leading-none font-bold"
                         :class="[
                             cantidad > 0
-                                ? 'bg-primary text-primary-foreground dark:bg-brand-ink dark:text-white'
-                                : 'bg-white/15 text-white dark:bg-black/15 dark:text-primary-foreground',
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-white/15 text-white',
                             rebote ? 'animate-in duration-300 zoom-in-50' : '',
                         ]"
                         aria-hidden="true"
@@ -531,4 +542,107 @@ function iniciales(nombre: string): string {
             </SheetContent>
         </Sheet>
     </header>
+    <!-- Franja de categorías: fuera del header fijo (no cambia su altura; se va con el scroll) -->
+    <nav
+        v-if="categoriasFranja.length"
+        class="border-b border-border/60 bg-card/50"
+        aria-label="Categorías"
+    >
+        <ul
+            class="franja mx-auto flex w-full max-w-7xl items-center gap-1.5 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8"
+        >
+            <li class="shrink-0">
+                <Link
+                    :href="urls.catalogo"
+                    class="chip"
+                    :class="{
+                        'chip-activo':
+                            rutaActual === urls.catalogo && !categoriaActual,
+                    }"
+                >
+                    Todo
+                </Link>
+            </li>
+            <li
+                v-for="(categoria, indice) in categoriasFranja"
+                :key="categoria.slug"
+                class="shrink-0 animate-in [animation-fill-mode:both] fade-in slide-in-from-left-2 motion-reduce:animate-none"
+                :style="{ animationDelay: `${indice * 35}ms` }"
+            >
+                <Link
+                    :href="urls.categoria(categoria.slug)"
+                    class="chip"
+                    :class="{
+                        'chip-activo': categoriaActual === categoria.slug,
+                    }"
+                >
+                    {{ categoria.nombre }}
+                </Link>
+            </li>
+        </ul>
+    </nav>
 </template>
+
+<style scoped>
+.franja {
+    scrollbar-width: none;
+    mask-image: linear-gradient(
+        90deg,
+        transparent 0,
+        #000 12px,
+        #000 calc(100% - 24px),
+        transparent 100%
+    );
+}
+
+.franja::-webkit-scrollbar {
+    display: none;
+}
+
+.chip {
+    display: inline-flex;
+    height: 2rem;
+    align-items: center;
+    border-radius: 9999px;
+    padding-inline: 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--secondary-foreground);
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+    box-shadow: inset 0 0 0 1px var(--border);
+    transition:
+        background-color 0.2s var(--ease-brand),
+        color 0.2s var(--ease-brand),
+        box-shadow 0.2s var(--ease-brand),
+        transform 0.2s var(--ease-brand);
+}
+
+.chip:hover {
+    background: var(--brand-green-soft);
+    box-shadow: inset 0 0 0 1px var(--brand-green);
+    transform: translateY(-1px);
+}
+
+.chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
+}
+
+.chip-activo,
+.chip-activo:hover {
+    background: var(--brand-deep);
+    color: #fff;
+    box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chip {
+        transition: none;
+    }
+
+    .chip:hover {
+        transform: none;
+    }
+}
+</style>

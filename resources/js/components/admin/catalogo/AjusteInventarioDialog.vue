@@ -177,7 +177,7 @@ function guardar(): void {
                         />
                         <component
                             :is="op.icono"
-                            class="mt-0.5 size-4 shrink-0 text-brand-deep dark:text-brand-green"
+                            class="mt-0.5 size-4 shrink-0 text-brand-deep"
                         />
                         <span>
                             <span class="block text-sm font-semibold">{{

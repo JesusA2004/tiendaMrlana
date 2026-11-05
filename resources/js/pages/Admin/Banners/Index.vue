@@ -207,18 +207,21 @@ function eliminar(b: Banner) {
             >
         </EmptyState>
 
-        <ol v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ol
+            v-else
+            class="grid stagger-children gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+        >
             <li
                 v-for="(b, i) in banners"
                 :key="b.id"
-                class="flex flex-col overflow-hidden rounded-2xl border bg-card"
+                class="group flex hover-lift flex-col overflow-hidden rounded-2xl border bg-card"
             >
                 <div class="relative aspect-[8/3] bg-muted">
                     <img
                         v-if="b.imagen"
                         :src="b.imagen"
                         :alt="b.titulo"
-                        class="size-full object-cover"
+                        class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
                     />
                     <div

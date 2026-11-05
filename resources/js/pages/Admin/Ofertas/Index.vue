@@ -251,11 +251,13 @@ function eliminar(o: Oferta) {
         </EmptyState>
 
         <template v-else>
-            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div
+                class="grid stagger-children gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+            >
                 <article
                     v-for="o in ofertas.data"
                     :key="o.id"
-                    class="flex flex-col gap-3 rounded-2xl border bg-card p-4"
+                    class="flex hover-lift flex-col gap-3 rounded-2xl border bg-card p-4"
                 >
                     <div class="flex items-start justify-between gap-2">
                         <p class="min-w-0 font-medium">{{ o.nombre }}</p>

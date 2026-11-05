@@ -51,7 +51,7 @@ function totalCon(o: OpcionEnvioCliente): number {
 
 <template>
     <section
-        class="overflow-hidden rounded-3xl border-2 border-brand-teal/60 bg-background shadow-sm"
+        class="overflow-hidden rounded-3xl border border-border bg-card shadow-brand"
         aria-labelledby="titulo-elegir-envio"
     >
         <div
@@ -90,10 +90,10 @@ function totalCon(o: OpcionEnvioCliente): number {
                     :aria-checked="elegida === o.id"
                     :disabled="!url"
                     :class="[
-                        'group relative flex flex-col gap-2 rounded-2xl border-2 p-4 text-left transition focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                        'group relative flex flex-col gap-2 rounded-2xl border-2 bg-card p-4 text-left transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none motion-reduce:transition-none',
                         elegida === o.id
-                            ? 'border-brand-green bg-brand-green-soft/50 shadow-md'
-                            : 'border-border hover:-translate-y-0.5 hover:border-brand-teal hover:shadow-sm',
+                            ? 'z-10 scale-[1.03] border-brand-green bg-brand-green-soft/60 ring-4 shadow-brand ring-brand-green/25'
+                            : 'border-border hover:-translate-y-1 hover:border-brand-green/60 hover:shadow-brand-sm',
                         !url && 'cursor-default hover:translate-y-0',
                     ]"
                     @click="elegida = o.id"
@@ -151,7 +151,7 @@ function totalCon(o: OpcionEnvioCliente): number {
                     </span>
                     <BadgeCheck
                         v-if="elegida === o.id"
-                        class="absolute top-3 right-3 size-6 text-brand-green-strong"
+                        class="absolute top-3 right-3 size-6 animate-scale-in text-brand-green-strong"
                         aria-hidden="true"
                     />
                 </button>
@@ -159,7 +159,7 @@ function totalCon(o: OpcionEnvioCliente): number {
 
             <div
                 v-if="url"
-                class="mt-4 flex flex-col gap-3 rounded-2xl bg-surface p-4 sm:flex-row sm:items-center"
+                class="mt-4 flex flex-col gap-3 rounded-2xl bg-brand-soft-gradient p-4 sm:flex-row sm:items-center"
             >
                 <div class="min-w-0 flex-1 text-sm">
                     <template v-if="actual">
@@ -167,9 +167,10 @@ function totalCon(o: OpcionEnvioCliente): number {
                             Total con
                             <strong>{{ actual.paqueteria }}</strong
                             >:
-                            <span class="font-display text-xl font-extrabold">{{
-                                moneda(totalCon(actual))
-                            }}</span>
+                            <span
+                                class="font-display text-xl font-extrabold text-brand-deep tabular-nums"
+                                >{{ moneda(totalCon(actual)) }}</span
+                            >
                         </p>
                         <p class="text-xs text-muted-foreground">
                             Productos {{ moneda(subtotalSinEnvio) }} + envío
@@ -190,7 +191,7 @@ function totalCon(o: OpcionEnvioCliente): number {
                 </div>
                 <Button
                     size="lg"
-                    class="rounded-full"
+                    class="rounded-full font-bold shadow-brand-sm hover:-translate-y-0.5 hover:shadow-brand"
                     :disabled="!actual || form.processing"
                     @click="confirmar"
                 >

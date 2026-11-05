@@ -13,7 +13,8 @@ import type { PropsCompartidasTienda } from '@/components/public/types';
 /**
  * Layout de la tienda pública (también lo usan carrito/checkout de otros equipos).
  * Muestra los mensajes flash de sesión (success|error) como avisos no intrusivos y
- * mantiene las metaetiquetas SEO/Open Graph de la prop `seo` (SeoHead).
+ * mantiene las metaetiquetas SEO/Open Graph de la prop `seo` (SeoHead). Fondo verde suave de
+ * marca (`bg-brand-app`) y transición de entrada en cada página (`animate-page-in`).
  */
 const page = usePage<PropsCompartidasTienda>();
 
@@ -35,14 +36,16 @@ watch(
 <template>
     <SeoHead />
 
-    <div class="flex min-h-svh flex-col bg-background text-foreground">
+    <div
+        class="flex min-h-svh flex-col overflow-x-clip bg-brand-app text-foreground"
+    >
         <WhaticketWidget />
 
         <StoreNavbar />
 
         <main
             id="contenido"
-            class="w-full flex-1 focus:outline-none"
+            class="w-full flex-1 animate-page-in focus:outline-none"
             tabindex="-1"
         >
             <slot />

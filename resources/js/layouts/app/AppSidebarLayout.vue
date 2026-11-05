@@ -67,9 +67,14 @@ onBeforeUnmount(() => quitarListener?.());
 <template>
     <AppShell variant="sidebar">
         <AppSidebar />
-        <AppContent variant="sidebar" class="overflow-x-hidden bg-background">
+        <AppContent variant="sidebar" class="overflow-x-hidden">
             <AppSidebarHeader :breadcrumbs="breadcrumbs" />
-            <slot />
+            <div
+                :key="page.component"
+                class="flex flex-1 animate-page-in flex-col"
+            >
+                <slot />
+            </div>
         </AppContent>
         <Toaster rich-colors close-button />
     </AppShell>

@@ -238,7 +238,7 @@ const hayFiltros = computed(
             <div
                 class="hidden overflow-hidden rounded-2xl border bg-card md:block"
             >
-                <table class="w-full text-sm">
+                <table class="w-full table-hover text-sm">
                     <thead
                         class="bg-surface text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                     >
@@ -352,7 +352,7 @@ const hayFiltros = computed(
             </div>
 
             <!-- Tarjetas (móvil) -->
-            <ul class="grid gap-3 md:hidden">
+            <ul class="grid stagger-children gap-3 md:hidden">
                 <li v-for="p in pedidos.data" :key="p.id">
                     <Link
                         :href="pedidoShow(p.id).url"

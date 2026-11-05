@@ -10,8 +10,8 @@ import {
 
 /**
  * Invitación discreta a instalar la PWA.
- *  - Android/Chrome: usa el evento `beforeinstallprompt`.
- *  - iOS Safari: muestra instrucciones "Compartir → Agregar a inicio".
+ * - Android/Chrome: usa el evento `beforeinstallprompt`.
+ * - iOS Safari: muestra instrucciones "Compartir → Agregar a inicio".
  * Se muestra tras unos segundos de navegación y se pospone 14 días al cerrarla.
  */
 const CLAVE = 'mrlana:pwa-pospuesto';

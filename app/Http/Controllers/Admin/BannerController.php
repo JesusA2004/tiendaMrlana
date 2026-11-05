@@ -110,7 +110,7 @@ class BannerController extends Controller
             'titulo' => ['required', 'string', 'max:180'],
             'descripcion' => ['nullable', 'string', 'max:500'],
             // Enlace interno (/catalogo?...) o https externo.
-            'url' => ['nullable', 'string', 'max:255', 'regex:/^(\/(?!\/)[^\s]*|https:\/\/[^\s]+)$/'],
+            'url' => ['nullable', 'string', 'max:191', 'regex:/^(\/(?!\/)[^\s]*|https:\/\/[^\s]+)$/'],
             'imagen_file' => [$nuevo ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192', 'dimensions:min_width=800,min_height=300'],
             'activo' => ['boolean'],
             'inicia_en' => ['nullable', 'date'],

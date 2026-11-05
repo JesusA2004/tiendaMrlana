@@ -97,7 +97,7 @@ class CuponController extends Controller
 
         $data = $request->validate([
             'codigo' => ['required', 'string', 'min:3', 'max:40', 'regex:/^[A-Z0-9_-]+$/', Rule::unique('cupones', 'codigo')->ignore($cupon?->id)],
-            'nombre' => ['required', 'string', 'max:160'],
+            'nombre' => ['required', 'string', 'max:150'],
             'tipo' => ['required', Rule::in(array_column(self::TIPOS, 'value'))],
             'valor' => $porcentaje
                 ? ['required', 'numeric', 'min:1', 'max:100']

@@ -106,7 +106,7 @@ class DireccionController extends Controller
             'colonia' => ['required', 'string', 'max:150'],
             'municipio' => ['required', 'string', 'max:150'],
             'estado' => ['required', 'string', 'max:150'],
-            'pais' => ['required', 'string', 'max:150'],
+            'pais' => ['required', 'string', 'max:100'],
             'codigo_postal' => ['required', 'string', 'max:20'],
             'referencias' => ['nullable', 'string', 'max:500'],
             'predeterminada' => ['nullable', 'boolean'],

@@ -31,10 +31,8 @@ const passwordInput = useTemplateRef('passwordInput');
             title="Eliminar cuenta"
             description="Elimina tu cuenta y todos sus datos."
         />
-        <div
-            class="space-y-4 rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10"
-        >
-            <div class="flex items-start gap-3 text-red-700 dark:text-red-100">
+        <div class="space-y-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+            <div class="flex items-start gap-3 text-red-700">
                 <TriangleAlert
                     class="mt-0.5 size-5 shrink-0"
                     aria-hidden="true"

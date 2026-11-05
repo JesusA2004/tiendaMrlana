@@ -5,10 +5,10 @@
   "referencia_consultada_en": "2026-11-04",
   "moneda": "MXN",
   "avisos": [
-    "Los precios son referencias de mercado, no precios de venta de Mr Lana.",
+    "Decisión del dueño (2026-11-05): el precio del catálogo se usa como precio de venta inicial (sólo si el producto no tiene precio; el admin puede editarlo).",
     "Proveedor, margen, disponibilidad y costo de entrega por confirmar.",
-    "Las fotografías del PDF pertenecen a la marca de referencia; no se importan.",
-    "No existe relación comercial confirmada con la marca de referencia."
+    "Las fotografías del PDF se usan como imágenes de producto (ver catalogo_muebles_mx_2026/imagenes.json).",
+    "No existe relación comercial confirmada con la marca de referencia: no presentarse como distribuidor oficial."
   ],
   "productos": [
     {
@@ -25,7 +25,6 @@
       "titular": "Para tu zona de entretenimiento",
       "descripcion": "Haz de tu entretenimiento un espacio más ordenado. Su formato bajo permite integrar la pantalla y organizar los objetos de uso diario.",
       "observaciones": "Verifica peso y medidas de la pantalla compatibles.",
-      "top_ventas_en_referencia": true,
       "url_referencia": "https://www.ikea.com/mx/es/p/lack-mueble-de-tv-negro-90243297/"
     },
     {
@@ -42,7 +41,6 @@
       "titular": "Apoyo para tus momentos cotidianos",
       "descripcion": "Una superficie práctica justo donde la necesitas. Completa tu sala con una pieza fácil de combinar y aprovecha tus rincones favoritos.",
       "observaciones": "Los objetos decorativos se muestran como ambientación.",
-      "top_ventas_en_referencia": true,
       "url_referencia": "https://www.ikea.com/mx/es/p/lack-mesa-lateral-blanco-30449908/"
     },
     {
@@ -59,7 +57,6 @@
       "titular": "Apoyo para tus momentos cotidianos",
       "descripcion": "Una superficie práctica justo donde la necesitas. Completa tu sala con una pieza fácil de combinar y aprovecha tus rincones favoritos.",
       "observaciones": "Los objetos decorativos se muestran como ambientación.",
-      "top_ventas_en_referencia": true,
       "url_referencia": "https://www.ikea.com/mx/es/p/gladom-mesa-con-bandeja-blanco-70337819/"
     },
     {
@@ -76,7 +73,6 @@
       "titular": "Un acento para tu sala",
       "descripcion": "Crea un rincón con personalidad. Su silueta abierta aporta un acento visual para leer, conversar o complementar tu sala.",
       "observaciones": "Consulta cuidados y uso recomendado del fabricante.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/skalboda-sillon-blanco-20582035/"
     },
     {
@@ -93,7 +89,6 @@
       "titular": "El centro de tu comedor",
       "descripcion": "El punto de encuentro de tu hogar. Una mesa de líneas limpias para acompañar comidas, conversaciones y momentos compartidos.",
       "observaciones": "Las sillas y accesorios no se incluyen salvo indicación expresa.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/sandsberg-mesa-s59420400/"
     },
     {
@@ -110,7 +105,6 @@
       "titular": "Para comidas y reuniones",
       "descripcion": "Adapta el comedor a cada momento. Su formato extensible permite aprovechar el espacio cotidiano y ampliar la superficie cuando lo necesitas.",
       "observaciones": "Las sillas se cotizan por separado.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/vihals-mesa-extensible-blanco-90569097/"
     },
     {
@@ -127,7 +121,6 @@
       "titular": "El centro de tu comedor",
       "descripcion": "El punto de encuentro de tu hogar. Una mesa de líneas limpias para acompañar comidas, conversaciones y momentos compartidos.",
       "observaciones": "Las sillas y accesorios no se incluyen salvo indicación expresa.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/mittzon-mesa-redondo-blanco-s69530441/"
     },
     {
@@ -144,7 +137,6 @@
       "titular": "Ideal para organizar prendas",
       "descripcion": "Dale orden a tu recámara con cajones que acompañan tu día a día. Una pieza de líneas sencillas para organizar prendas y complementar tu espacio.",
       "observaciones": "Instalar el sistema de anclaje conforme al fabricante.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/storklinta-comoda-de-3-cajones-gris-verde-funcion-de-anclaje-desbloqueo-80574645/"
     },
     {
@@ -161,7 +153,6 @@
       "titular": "Ideal para ropa y accesorios",
       "descripcion": "Un lugar para cada prenda. Integra una solución de guardado que ayuda a mantener tu recámara despejada y a organizar tu rutina diaria.",
       "observaciones": "Mide el espacio y la apertura antes de elegir.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/vihals-closet-c-2-puertas-blanco-20483257/"
     },
     {
@@ -178,7 +169,6 @@
       "titular": "Ideal para ropa y accesorios",
       "descripcion": "Un lugar para cada prenda. Integra una solución de guardado que ayuda a mantener tu recámara despejada y a organizar tu rutina diaria.",
       "observaciones": "Mide el espacio y la apertura antes de elegir.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/kleppstad-closet-con-puertas-correderas-blanco-90437238/"
     },
     {
@@ -195,7 +185,6 @@
       "titular": "Descanso con almacenamiento",
       "descripcion": "Transforma tu zona de descanso con una base que integra espacio de guardado. Una opción para aprovechar mejor la distribución de tu habitación.",
       "observaciones": "Confirma colchón, soporte y accesorios incluidos.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/malm-base-de-cama-alta-con-2-cajones-blanco-luroey-s89175973/"
     },
     {
@@ -212,7 +201,6 @@
       "titular": "Ideal para organizar prendas",
       "descripcion": "Dale orden a tu recámara con cajones que acompañan tu día a día. Una pieza de líneas sencillas para organizar prendas y complementar tu espacio.",
       "observaciones": "Instalar el sistema de anclaje conforme al fabricante.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/storklinta-comoda-de-4-cajones-blanco-funcion-de-anclaje-desbloqueo-40559289/"
     },
     {
@@ -229,7 +217,6 @@
       "titular": "Ideal para organizar prendas",
       "descripcion": "Dale orden a tu recámara con cajones que acompañan tu día a día. Una pieza de líneas sencillas para organizar prendas y complementar tu espacio.",
       "observaciones": "Instalar el sistema de anclaje conforme al fabricante.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/storklinta-comoda-de-6-cajones-blanco-funcion-de-anclaje-desbloqueo-60561248/"
     },
     {
@@ -246,7 +233,6 @@
       "titular": "Orden para trabajar a gusto",
       "descripcion": "Organiza tu espacio de trabajo con una pieza que reúne documentos y accesorios. Mantén lo esencial cerca y una superficie de trabajo más despejada.",
       "observaciones": "Confirma dimensiones útiles y carga permitida.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/alex-cajonera-con-ruedas-gris-oscuro-negro-s69582680/"
     },
     {
@@ -263,7 +249,6 @@
       "titular": "Tus objetos, en su lugar",
       "descripcion": "Dale un lugar a tus libros, cajas y objetos favoritos. Una pieza para organizar, exhibir y aprovechar el espacio con una composición sencilla.",
       "observaciones": "Verifica anclaje, carga por nivel y montaje del fabricante.",
-      "top_ventas_en_referencia": true,
       "url_referencia": "https://www.ikea.com/mx/es/p/vesken-estante-blanco-40307866/"
     },
     {
@@ -280,7 +265,6 @@
       "titular": "Para entradas y recibidores",
       "descripcion": "Recibe cada día con más orden. Reúne tu calzado en una pieza que ayuda a despejar la entrada y facilita tener todo a la mano.",
       "observaciones": "La capacidad depende del tamaño del calzado.",
-      "top_ventas_en_referencia": true,
       "url_referencia": "https://www.ikea.com/mx/es/p/mackapaer-zapatero-con-almacenaje-blanco-50334751/"
     },
     {
@@ -297,7 +281,6 @@
       "titular": "Almacenamiento que se integra",
       "descripcion": "Guarda más y despeja a la vista. Un gabinete que aporta orden y permite integrar tus objetos cotidianos a una distribución más limpia.",
       "observaciones": "Revisa anclajes y montaje recomendados por el fabricante.",
-      "top_ventas_en_referencia": true,
       "url_referencia": "https://www.ikea.com/mx/es/p/ivar-gabinete-pino-40033763/"
     },
     {
@@ -314,7 +297,6 @@
       "titular": "Tus objetos, en su lugar",
       "descripcion": "Dale un lugar a tus libros, cajas y objetos favoritos. Una pieza para organizar, exhibir y aprovechar el espacio con una composición sencilla.",
       "observaciones": "Verifica anclaje, carga por nivel y montaje del fabricante.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/brimnes-librero-blanco-90301225/"
     },
     {
@@ -331,7 +313,6 @@
       "titular": "Tus objetos, en su lugar",
       "descripcion": "Dale un lugar a tus libros, cajas y objetos favoritos. Una pieza para organizar, exhibir y aprovechar el espacio con una composición sencilla.",
       "observaciones": "Verifica anclaje, carga por nivel y montaje del fabricante.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/kallax-estante-blanco-10637302/"
     },
     {
@@ -348,7 +329,6 @@
       "titular": "Tu rutina empieza en la entrada",
       "descripcion": "Haz que la entrada trabaje para ti. Un conjunto para organizar los objetos de salida y dar una bienvenida más despejada a tu hogar.",
       "observaciones": "Confirma las piezas y fijaciones incluidas en el conjunto.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/aelganaes-muebles-para-recibidor-juego-de-2-negro-s79578121/"
     },
     {
@@ -365,7 +345,6 @@
       "titular": "Tus objetos, en su lugar",
       "descripcion": "Dale un lugar a tus libros, cajas y objetos favoritos. Una pieza para organizar, exhibir y aprovechar el espacio con una composición sencilla.",
       "observaciones": "Verifica anclaje, carga por nivel y montaje del fabricante.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/kallax-estante-blanco-20631639/"
     },
     {
@@ -382,7 +361,6 @@
       "titular": "Organización auxiliar para el hogar",
       "descripcion": "Lleva el orden a los espacios que lo necesitan. Su formato auxiliar permite reunir artículos de uso frecuente y aprovechar mejor cada rincón.",
       "observaciones": "Consulta carga permitida y condiciones de uso.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/loshult-carrito-pino-40576279/"
     },
     {
@@ -399,7 +377,6 @@
       "titular": "Almacenamiento que se integra",
       "descripcion": "Guarda más y despeja a la vista. Un gabinete que aporta orden y permite integrar tus objetos cotidianos a una distribución más limpia.",
       "observaciones": "Revisa anclajes y montaje recomendados por el fabricante.",
-      "top_ventas_en_referencia": false,
       "url_referencia": "https://www.ikea.com/mx/es/p/idasen-gabinete-con-puertas-y-cajones-verde-oscuro-90496398/"
     },
     {
@@ -416,7 +393,6 @@
       "titular": "Organización auxiliar para el hogar",
       "descripcion": "Lleva el orden a los espacios que lo necesitan. Su formato auxiliar permite reunir artículos de uso frecuente y aprovechar mejor cada rincón.",
       "observaciones": "Consulta carga permitida y condiciones de uso.",
-      "top_ventas_en_referencia": true,
       "url_referencia": "https://www.ikea.com/mx/es/p/vesken-carrito-blanco-00471222/"
     },
     {
@@ -433,7 +409,6 @@
       "titular": "Un rincón para disfrutar afuera",
       "descripcion": "Disfruta tu balcón o terraza con un conjunto compacto. Una propuesta para compartir un café y dar vida a tus espacios al aire libre.",
       "observaciones": "Consulta cuidados para exterior y exposición a la intemperie.",
-      "top_ventas_en_referencia": true,
       "url_referencia": "https://www.ikea.com/mx/es/p/taernoe-mesa-y-2-sillas-exterior-negro-tinte-cafe-claro-s69898415/"
     }
   ]

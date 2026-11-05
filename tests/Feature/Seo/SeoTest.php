@@ -41,7 +41,7 @@ function jsonLd(string $html): array
 
 function nodo(array $nodos, string $tipo): ?array
 {
-    return collect($nodos)->firstWhere('@type', $tipo);
+    return collect($nodos)->first(fn (array $n) => in_array($tipo, (array) ($n['@type'] ?? []), true));
 }
 
 function productoConImagen(array $atributos = []): Producto
@@ -80,7 +80,14 @@ it('el home trae Open Graph absoluto y JSON-LD Organization + WebSite en el HTML
 
     $nodos = jsonLd($html);
     expect(nodo($nodos, 'Organization'))->toMatchArray(['name' => 'Mr Lana', 'url' => DOMINIO.'/', 'sameAs' => ['https://facebook.com/mrlana']])
-        ->and(nodo($nodos, 'WebSite')['potentialAction']['target']['urlTemplate'])->toBe(DOMINIO.'/productos?q={search_term_string}');
+        ->and(nodo($nodos, 'WebSite')['potentialAction']['target']['urlTemplate'])->toBe(DOMINIO.'/productos?q={search_term_string}')
+        // Marca: nombre del sitio + variantes de búsqueda.
+        ->and(nodo($nodos, 'OnlineStore')['alternateName'])->toContain('Tienda Mr Lana')
+        ->and(nodo($nodos, 'WebSite')['name'])->toBe('Mr Lana')
+        ->and(nodo($nodos, 'WebSite')['alternateName'])->toContain('Tienda Mr Lana', 'MrLana')
+        ->and($html)->toContain('<title data-inertia="">Mr Lana | Tienda en línea de muebles y artículos para el hogar</title>')
+        ->and($html)->toContain('hreflang="es-MX"')
+        ->and(meta($html, 'name', 'description'))->toContain('Tienda Mr Lana');
 });
 
 it('la imagen OG general existe, es JPG 1200x630 y pesa menos de 300 KB', function () {

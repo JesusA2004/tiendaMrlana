@@ -1,6 +1,13 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import { ArrowRight, ChevronRight, ImageOff, Package } from 'lucide-vue-next';
+import { Head, Link, router } from '@inertiajs/vue3';
+import {
+    AlertCircle,
+    ArrowRight,
+    ChevronRight,
+    ImageOff,
+    Package,
+} from 'lucide-vue-next';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import CuentaNav from '@/components/compra/CuentaNav.vue';
 import EstadoChip from '@/components/compra/EstadoChip.vue';
 import { fechaLarga, moneda } from '@/components/compra/formato';
@@ -56,6 +63,32 @@ const filtros = [
     { clave: 'cerrados', texto: 'Cancelados y vencidos', conteo: 'cerrados' },
 ] as const;
 
+/** Skeleton verde mientras se cambia de filtro o de página (sólo presentación). */
+const cargando = ref(false);
+let quitarInicio: (() => void) | null = null;
+let quitarFin: (() => void) | null = null;
+
+onMounted(() => {
+    quitarInicio = router.on('start', (evento) => {
+        const visita = evento.detail.visit;
+
+        if (
+            visita.method === 'get' &&
+            visita.url.pathname === window.location.pathname
+        ) {
+            cargando.value = true;
+        }
+    });
+    quitarFin = router.on('finish', () => {
+        cargando.value = false;
+    });
+});
+
+onBeforeUnmount(() => {
+    quitarInicio?.();
+    quitarFin?.();
+});
+
 function etiquetaPagina(label: string): string {
     return label
         .replace('&laquo; Previous', '‹ Anterior')
@@ -76,7 +109,7 @@ function etiquetaPagina(label: string): string {
 
     <div class="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
         <nav
-            class="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+            class="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pt-1 pb-2 sm:mx-0 sm:flex-wrap sm:px-0"
             aria-label="Filtrar pedidos"
         >
             <Link
@@ -88,33 +121,66 @@ function etiquetaPagina(label: string): string {
                     )
                 "
                 preserve-scroll
-                class="flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition"
+                class="flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95"
                 :class="
                     filtro === f.clave
-                        ? 'border-brand-green bg-brand-green text-brand-ink'
-                        : 'border-border bg-background hover:border-brand-green'
+                        ? 'border-brand-deep bg-brand-deep text-white shadow-brand-sm'
+                        : 'border-border bg-card text-foreground hover:-translate-y-0.5 hover:border-brand-green hover:bg-brand-green-soft hover:shadow-brand-sm'
                 "
                 :aria-current="filtro === f.clave ? 'true' : undefined"
             >
                 {{ f.texto }}
                 <span
-                    class="rounded-full px-1.5 text-xs"
-                    :class="filtro === f.clave ? 'bg-white/60' : 'bg-muted'"
+                    class="min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums transition-colors"
+                    :class="
+                        filtro === f.clave
+                            ? 'bg-brand-green text-brand-ink'
+                            : 'bg-brand-green-soft text-brand-green-strong'
+                    "
                     >{{ conteos[f.conteo] ?? 0 }}</span
                 >
             </Link>
         </nav>
 
+        <ul
+            v-if="cargando"
+            class="space-y-3"
+            aria-busy="true"
+            aria-label="Cargando pedidos"
+        >
+            <li
+                v-for="n in 3"
+                :key="n"
+                class="flex items-center gap-4 rounded-3xl border border-border bg-card p-4 shadow-brand-sm sm:p-5"
+            >
+                <span class="size-14 shrink-0 skeleton-shimmer rounded-2xl" />
+                <span class="flex-1 space-y-2">
+                    <span
+                        class="block h-4 w-1/3 skeleton-shimmer rounded-full"
+                    />
+                    <span
+                        class="block h-3 w-2/3 skeleton-shimmer rounded-full"
+                    />
+                    <span
+                        class="block h-5 w-1/2 skeleton-shimmer rounded-full"
+                    />
+                </span>
+                <span
+                    class="hidden h-6 w-20 skeleton-shimmer rounded-full sm:block"
+                />
+            </li>
+        </ul>
+
         <div
-            v-if="!pedidos.data.length"
-            class="flex flex-col items-center rounded-3xl border border-dashed border-border bg-background px-6 py-14 text-center"
+            v-else-if="!pedidos.data.length"
+            class="flex animate-scale-in flex-col items-center rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-brand-sm"
         >
             <span
-                class="mb-4 flex size-14 items-center justify-center rounded-full bg-brand-green-soft text-brand-green-strong"
+                class="mb-4 flex size-16 items-center justify-center rounded-full bg-brand-gradient text-brand-ink shadow-brand-sm motion-safe:animate-float"
             >
                 <Package class="size-7" aria-hidden="true" />
             </span>
-            <h2 class="font-display text-xl font-bold">
+            <h2 class="font-display text-xl font-bold text-brand-deep">
                 {{
                     filtro
                         ? 'No hay pedidos con este filtro'
@@ -124,41 +190,53 @@ function etiquetaPagina(label: string): string {
             <p class="mt-1 max-w-sm text-sm text-muted-foreground">
                 Cuando compres, aquí podrás seguir tu pedido paso a paso.
             </p>
-            <Button as-child class="mt-5 rounded-full">
+            <Button as-child class="group mt-5 rounded-full font-bold">
                 <Link :href="urls.catalogo">
                     Ir a la tienda
-                    <ArrowRight aria-hidden="true" />
+                    <ArrowRight
+                        class="transition-transform group-hover:translate-x-1"
+                        aria-hidden="true"
+                    />
                 </Link>
             </Button>
         </div>
 
-        <ul v-else class="space-y-3">
+        <ul v-else class="stagger-children space-y-3">
             <li v-for="p in pedidos.data" :key="p.id">
                 <Link
                     :href="pedidosRutas.show.url(p.id)"
-                    class="group flex flex-col gap-4 rounded-3xl border bg-background p-4 shadow-xs transition hover:border-brand-green hover:shadow-md sm:flex-row sm:items-center sm:p-5"
+                    class="group relative flex hover-lift flex-col gap-4 overflow-hidden rounded-3xl border bg-card p-4 shadow-brand-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:flex-row sm:items-center sm:p-5"
                     :class="
                         p.requiere_accion
                             ? 'border-warning/50'
                             : 'border-border'
                     "
                 >
+                    <span
+                        class="absolute inset-y-0 left-0 w-1.5 transition-all duration-300 group-hover:w-2"
+                        :class="
+                            p.requiere_accion
+                                ? 'bg-warning'
+                                : 'bg-brand-gradient opacity-0 group-hover:opacity-100'
+                        "
+                        aria-hidden="true"
+                    />
                     <div class="flex shrink-0 -space-x-3">
                         <span
                             v-for="(img, i) in p.imagenes"
                             :key="i"
-                            class="size-14 overflow-hidden rounded-2xl bg-surface ring-2 ring-background"
+                            class="size-14 overflow-hidden rounded-2xl bg-brand-green-soft ring-2 ring-card transition-transform duration-300 group-hover:-translate-y-0.5"
                         >
                             <img
                                 :src="img"
                                 alt=""
-                                class="size-full object-cover"
+                                class="size-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 loading="lazy"
                             />
                         </span>
                         <span
                             v-if="!p.imagenes.length"
-                            class="flex size-14 items-center justify-center rounded-2xl bg-surface text-muted-foreground"
+                            class="flex size-14 items-center justify-center rounded-2xl bg-brand-green-soft text-brand-green-strong"
                         >
                             <ImageOff class="size-5" aria-hidden="true" />
                         </span>
@@ -169,7 +247,7 @@ function etiquetaPagina(label: string): string {
                             class="flex flex-wrap items-center gap-x-3 gap-y-1"
                         >
                             <p
-                                class="font-display text-lg font-bold tracking-wide"
+                                class="font-display text-lg font-bold tracking-wide text-brand-deep transition-colors group-hover:text-brand-green-strong"
                             >
                                 {{ p.folio }}
                             </p>
@@ -199,8 +277,9 @@ function etiquetaPagina(label: string): string {
                         </div>
                         <p
                             v-if="p.requiere_accion"
-                            class="mt-2 text-xs font-semibold text-warning"
+                            class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning"
                         >
+                            <AlertCircle class="size-3.5" aria-hidden="true" />
                             {{
                                 p.envio_esperando_eleccion
                                     ? 'Pendiente: elige tu opción de envío.'
@@ -213,7 +292,7 @@ function etiquetaPagina(label: string): string {
                         class="flex items-center justify-between gap-3 sm:flex-col sm:items-end"
                     >
                         <p
-                            class="font-display text-xl font-extrabold tabular-nums"
+                            class="font-display text-xl font-extrabold text-brand-deep tabular-nums"
                         >
                             {{ moneda(p.total) }}
                             <span
@@ -227,11 +306,11 @@ function etiquetaPagina(label: string): string {
                             >
                         </p>
                         <span
-                            class="inline-flex items-center gap-1 text-sm font-semibold text-brand-green-strong"
+                            class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold text-brand-green-strong transition-colors group-hover:bg-brand-green-soft"
                         >
                             Ver detalle
                             <ChevronRight
-                                class="size-4 transition group-hover:translate-x-0.5"
+                                class="size-4 transition-transform group-hover:translate-x-1"
                                 aria-hidden="true"
                             />
                         </span>
@@ -250,11 +329,11 @@ function etiquetaPagina(label: string): string {
                     v-if="l.url"
                     :href="l.url"
                     preserve-scroll
-                    class="min-w-9 rounded-full border px-3 py-1.5 text-center text-sm"
+                    class="min-w-9 rounded-full border px-3 py-1.5 text-center text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     :class="
                         l.active
-                            ? 'border-brand-green bg-brand-green font-bold text-brand-ink'
-                            : 'border-border hover:border-brand-green'
+                            ? 'border-brand-deep bg-brand-deep font-bold text-white'
+                            : 'border-border bg-card hover:-translate-y-0.5 hover:border-brand-green hover:bg-brand-green-soft'
                     "
                     :aria-current="l.active ? 'page' : undefined"
                     >{{ etiquetaPagina(l.label) }}</Link

@@ -92,7 +92,7 @@ const tarjetas = computed(() => [
         etiqueta: 'Productos con inventario',
         valor: props.resumen.productos_inventario,
         icono: Boxes,
-        clase: 'text-brand-deep dark:text-brand-green',
+        clase: 'text-brand-deep ',
     },
     {
         etiqueta: 'Unidades en existencia',
@@ -132,7 +132,7 @@ function ajustar(producto: ProductoInventario | null = null): void {
 <template>
     <Head title="Inventario" />
 
-    <div class="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div class="w-full animate-page-in space-y-6 p-4 md:p-6">
         <header
             class="flex flex-col gap-4 rounded-2xl bg-brand-deep-pattern px-5 py-6 text-white md:flex-row md:items-end md:justify-between md:px-8"
         >
@@ -154,13 +154,17 @@ function ajustar(producto: ProductoInventario | null = null): void {
             <Button @click="ajustar()"><Plus /> Nuevo movimiento</Button>
         </header>
 
-        <dl class="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <dl class="grid stagger-children grid-cols-2 gap-3 md:grid-cols-5">
             <div
                 v-for="t in tarjetas"
                 :key="t.etiqueta"
-                class="rounded-xl border bg-card p-4"
+                class="group hover-lift surface-card rounded-xl border bg-card p-4"
             >
-                <component :is="t.icono" class="size-5" :class="t.clase" />
+                <component
+                    :is="t.icono"
+                    class="size-5 transition-transform duration-300 group-hover:scale-110"
+                    :class="t.clase"
+                />
                 <dt class="mt-2 text-xs text-muted-foreground">
                     {{ t.etiqueta }}
                 </dt>
@@ -173,7 +177,7 @@ function ajustar(producto: ProductoInventario | null = null): void {
         <!-- Alertas -->
         <div
             v-if="bajo_minimo.length || agotados.length"
-            class="grid gap-4 lg:grid-cols-2"
+            class="grid stagger-children gap-4 lg:grid-cols-2"
         >
             <section
                 v-for="grupo in [
@@ -189,7 +193,7 @@ function ajustar(producto: ProductoInventario | null = null): void {
                     },
                 ].filter((g) => g.items.length)"
                 :key="grupo.titulo"
-                class="rounded-xl border bg-card p-4"
+                class="surface-card rounded-xl border bg-card p-4 transition-shadow duration-300 hover:shadow-brand"
             >
                 <h2 class="flex items-center gap-2 font-semibold">
                     <AlertTriangle class="size-4" :class="grupo.tono" />
@@ -199,13 +203,13 @@ function ajustar(producto: ProductoInventario | null = null): void {
                     <li
                         v-for="item in grupo.items"
                         :key="item.id"
-                        class="flex items-center gap-3 py-2"
+                        class="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-brand-green-soft/60"
                     >
                         <img
                             v-if="item.imagen"
                             :src="item.imagen"
                             :alt="item.nombre"
-                            class="size-10 rounded-md object-cover"
+                            class="size-10 rounded-md object-cover transition-transform duration-500 group-hover:scale-105"
                             loading="lazy"
                         />
                         <div
@@ -217,7 +221,7 @@ function ajustar(producto: ProductoInventario | null = null): void {
                         <div class="min-w-0 flex-1">
                             <Link
                                 :href="editarProducto(item.id).url"
-                                class="line-clamp-1 text-sm font-medium hover:text-brand-green-strong"
+                                class="line-clamp-1 text-sm font-medium transition-colors hover:text-brand-green-strong"
                                 >{{ item.nombre }}</Link
                             >
                             <p class="text-xs text-muted-foreground">
@@ -242,7 +246,7 @@ function ajustar(producto: ProductoInventario | null = null): void {
 
         <!-- Filtros -->
         <section
-            class="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5"
+            class="grid animate-fade-up gap-3 surface-card rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5"
             aria-label="Filtros de movimientos"
         >
             <div class="grid gap-1.5 sm:col-span-2">
@@ -324,9 +328,9 @@ function ajustar(producto: ProductoInventario | null = null): void {
 
         <div
             v-else
-            class="hidden overflow-hidden rounded-xl border bg-card md:block"
+            class="hidden animate-fade-up overflow-hidden surface-card rounded-xl border bg-card md:block"
         >
-            <table class="w-full text-sm">
+            <table class="w-full table-hover text-sm">
                 <thead
                     class="bg-muted/50 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                 >
@@ -340,7 +344,11 @@ function ajustar(producto: ProductoInventario | null = null): void {
                     </tr>
                 </thead>
                 <tbody class="divide-y">
-                    <tr v-for="m in movimientos.data" :key="m.id">
+                    <tr
+                        v-for="m in movimientos.data"
+                        :key="m.id"
+                        class="transition-colors"
+                    >
                         <td
                             class="px-4 py-3 whitespace-nowrap text-muted-foreground"
                         >
@@ -398,11 +406,14 @@ function ajustar(producto: ProductoInventario | null = null): void {
             </table>
         </div>
 
-        <ul v-if="movimientos.data.length" class="grid gap-3 md:hidden">
+        <ul
+            v-if="movimientos.data.length"
+            class="grid stagger-children gap-3 sm:grid-cols-2 md:hidden"
+        >
             <li
                 v-for="m in movimientos.data"
                 :key="m.id"
-                class="rounded-xl border bg-card p-4"
+                class="group hover-lift surface-card rounded-xl border bg-card p-4"
             >
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">

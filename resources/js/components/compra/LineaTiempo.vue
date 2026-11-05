@@ -22,24 +22,28 @@ defineProps<{
             <li
                 v-for="(paso, i) in pasos"
                 :key="paso.clave"
-                class="relative flex gap-3 pb-4 last:pb-0"
+                class="relative flex animate-fade-up gap-3 pb-4 last:pb-0"
+                :style="{ '--enter-delay': `${i * 110}ms` }"
             >
                 <span
                     v-if="i < pasos.length - 1"
-                    class="absolute top-7 left-[13px] h-[calc(100%-1.5rem)] w-0.5 rounded-full"
-                    :class="
-                        paso.estado === 'hecho' ? 'bg-brand-green' : 'bg-border'
-                    "
+                    class="absolute top-7 left-[13px] h-[calc(100%-1.5rem)] w-0.5 overflow-hidden rounded-full bg-border"
                     aria-hidden="true"
-                />
+                >
+                    <span
+                        v-if="paso.estado === 'hecho'"
+                        class="linea-relleno block h-full w-full bg-brand-green"
+                        :style="{ animationDelay: `${i * 110 + 200}ms` }"
+                    />
+                </span>
                 <span
-                    class="relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full ring-4 ring-background"
+                    class="relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full ring-4 ring-card transition-transform duration-200 hover:scale-110"
                     :class="{
                         'bg-brand-green text-brand-ink':
                             paso.estado === 'hecho',
-                        'bg-brand-teal text-brand-ink motion-safe:animate-pulse':
+                        'bg-brand-teal text-brand-ink shadow-[0_0_0_4px_rgb(100_203_212/0.3)] motion-safe:animate-pulse':
                             paso.estado === 'actual',
-                        'border-2 border-border bg-background text-muted-foreground':
+                        'border-2 border-border bg-card text-muted-foreground':
                             paso.estado === 'pendiente',
                         'bg-destructive text-white': paso.estado === 'error',
                     }"
@@ -84,3 +88,25 @@ defineProps<{
         </ol>
     </div>
 </template>
+
+<style scoped>
+.linea-relleno {
+    transform-origin: top;
+    animation: linea-crecer 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes linea-crecer {
+    from {
+        transform: scaleY(0);
+    }
+    to {
+        transform: scaleY(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .linea-relleno {
+        animation: none;
+    }
+}
+</style>

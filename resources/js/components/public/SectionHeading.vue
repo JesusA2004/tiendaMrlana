@@ -56,11 +56,11 @@ withDefaults(
         <Link
             v-if="enlace"
             :href="enlace"
-            class="group inline-flex h-10 w-fit shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors"
+            class="group inline-flex h-10 w-fit shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-[background-color,border-color,transform] duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
             :class="
                 oscuro
                     ? 'border-white/25 text-white hover:bg-white/10'
-                    : 'border-border text-foreground hover:border-brand-green hover:bg-brand-green-soft'
+                    : 'border-border bg-card/70 text-foreground shadow-brand-sm hover:border-brand-green hover:bg-brand-green-soft'
             "
         >
             {{ textoEnlace }}

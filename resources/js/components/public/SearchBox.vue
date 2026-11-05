@@ -233,7 +233,7 @@ function cerrarConRetraso() {
             </button>
             <button
                 type="submit"
-                class="inline-flex h-8 shrink-0 items-center rounded-full bg-brand-ink px-4 text-xs font-semibold text-white transition-colors hover:bg-brand-deep dark:bg-primary dark:text-primary-foreground"
+                class="inline-flex h-8 shrink-0 items-center rounded-full bg-brand-ink px-4 text-xs font-semibold text-white transition-colors hover:bg-brand-deep"
             >
                 Buscar
             </button>
