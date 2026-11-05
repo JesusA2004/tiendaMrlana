@@ -61,7 +61,10 @@ class PedidoController extends Controller
         // Conteo por estatus general con el resto de filtros aplicados (chips de estatus).
         $conteos = (clone $query)
             ->reorder()
-            ->selectRaw('estatus, count(*) as total')
+            ->setEagerLoads([])
+            // select() reemplaza las columnas (incluido el subselect de withCount) para cumplir ONLY_FULL_GROUP_BY.
+            ->select('estatus')
+            ->selectRaw('count(*) as total')
             ->groupBy('estatus')
             ->pluck('total', 'estatus');
 
