@@ -1,141 +1,259 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { useDocumentVisibility, useWindowScroll } from '@vueuse/core';
+import {
+    ArrowRight,
+    ChevronLeft,
+    ChevronRight,
+    Pause,
+    Play,
+} from 'lucide-vue-next';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { prefiereMenosMovimiento } from './tienda';
+import type { Banner } from './types';
 
-interface Slide {
-    id: number;
-    image: string;
-    badge: string;
-    title: string;
-    subtitle: string;
-    cta: string;
-    href: string;
-}
+const props = defineProps<{ banners: Banner[] }>();
 
-const props = defineProps<{
-    slides: Slide[];
-}>();
+const INTERVALO = 6500;
 
 const actual = ref(0);
-let timer: ReturnType<typeof setInterval> | null = null;
+const pausado = ref(false);
+const pausaUsuario = ref(false);
+const menosMovimiento = ref(false);
+const visibilidad = useDocumentVisibility();
+const { y } = useWindowScroll();
+let temporizador: number | undefined;
+let inicioToque: number | null = null;
 
-const irA = (indice: number) => {
-    actual.value = indice;
-};
+const total = computed(() => props.banners.length);
+const enMovimiento = computed(
+    () =>
+        total.value > 1 &&
+        !pausado.value &&
+        !pausaUsuario.value &&
+        !menosMovimiento.value &&
+        visibilidad.value === 'visible',
+);
+const desplazamiento = computed(() =>
+    menosMovimiento.value ? 0 : Math.min(y.value, 600) * 0.18,
+);
 
-const siguiente = () => {
-    actual.value = (actual.value + 1) % props.slides.length;
-};
+function ir(indice: number) {
+    actual.value = (indice + total.value) % total.value;
+    reiniciar();
+}
+
+function reiniciar() {
+    window.clearInterval(temporizador);
+
+    if (enMovimiento.value) {
+        temporizador = window.setInterval(() => {
+            actual.value = (actual.value + 1) % total.value;
+        }, INTERVALO);
+    }
+}
+
+function esExterno(url: string): boolean {
+    return /^https?:\/\//i.test(url) && !url.startsWith(window.location.origin);
+}
+
+function alTocar(e: PointerEvent) {
+    inicioToque = e.clientX;
+}
+
+function alSoltar(e: PointerEvent) {
+    if (inicioToque === null) {
+        return;
+    }
+
+    const delta = e.clientX - inicioToque;
+    inicioToque = null;
+
+    if (Math.abs(delta) > 50) {
+        ir(actual.value + (delta < 0 ? 1 : -1));
+    }
+}
+
+watch(enMovimiento, reiniciar);
 
 onMounted(() => {
-    timer = setInterval(siguiente, 4500);
+    menosMovimiento.value = prefiereMenosMovimiento();
+    reiniciar();
 });
 
-onBeforeUnmount(() => {
-    if (timer) {
-        clearInterval(timer);
-    }
-});
+onBeforeUnmount(() => window.clearInterval(temporizador));
 </script>
 
 <template>
-    <section class="relative overflow-hidden">
-        <div class="relative h-[380px] md:h-[560px]">
+    <section
+        class="relative"
+        aria-roledescription="carrusel"
+        aria-label="Promociones de la tienda"
+        @mouseenter="pausado = true"
+        @mouseleave="pausado = false"
+        @focusin="pausado = true"
+        @focusout="pausado = false"
+    >
+        <div
+            class="relative isolate overflow-hidden rounded-[28px] bg-brand-deep shadow-[0_30px_60px_-30px_rgba(20,51,43,0.55)] sm:rounded-[36px]"
+            @pointerdown="alTocar"
+            @pointerup="alSoltar"
+        >
             <div
-                v-for="(slide, index) in slides"
-                :key="slide.id"
-                class="absolute inset-0 transition duration-700"
-                :class="
-                    index === actual
-                        ? 'scale-100 opacity-100'
-                        : 'scale-105 opacity-0'
-                "
-            >
-                <img
-                    :src="slide.image"
-                    :alt="slide.title"
-                    class="h-full w-full object-cover"
-                />
-                <div
-                    class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-black/15"
-                />
-            </div>
-
-            <div
-                class="absolute inset-0 mx-auto flex w-full max-w-[1500px] items-center px-4 md:px-8"
+                class="relative aspect-[4/3] sm:aspect-[16/7] lg:aspect-[20/7]"
             >
                 <div
-                    class="relative max-w-2xl overflow-hidden rounded-[36px] border border-white/20 bg-black/35 p-8 text-white shadow-2xl backdrop-blur-md md:p-10"
+                    v-for="(banner, indice) in banners"
+                    :key="banner.id"
+                    class="absolute inset-0 transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+                    :class="
+                        indice === actual
+                            ? 'z-10 scale-100 opacity-100'
+                            : 'pointer-events-none z-0 scale-[1.04] opacity-0'
+                    "
+                    role="group"
+                    aria-roledescription="diapositiva"
+                    :aria-label="`${indice + 1} de ${total}: ${banner.titulo}`"
+                    :aria-hidden="indice !== actual"
                 >
-                    <div class="relative z-10">
+                    <img
+                        :src="banner.imagen"
+                        :alt="banner.titulo"
+                        class="absolute inset-0 h-[112%] w-full object-cover will-change-transform"
+                        :style="{
+                            transform: `translate3d(0, ${-desplazamiento}px, 0)`,
+                        }"
+                        :loading="indice === 0 ? 'eager' : 'lazy'"
+                        :fetchpriority="indice === 0 ? 'high' : 'auto'"
+                        decoding="async"
+                        draggable="false"
+                    />
+                    <div
+                        class="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent sm:bg-gradient-to-r sm:from-black/55 sm:via-black/10"
+                        aria-hidden="true"
+                    />
+
+                    <div
+                        class="absolute inset-x-0 bottom-0 p-5 sm:top-0 sm:flex sm:max-w-xl sm:flex-col sm:justify-end sm:p-10 lg:p-14"
+                    >
+                        <h2
+                            class="font-display text-2xl leading-[1.05] font-bold text-balance text-white drop-shadow-sm sm:text-4xl lg:text-5xl"
+                        >
+                            {{ banner.titulo }}
+                        </h2>
                         <p
-                            class="mb-4 inline-flex rounded-full border border-white/25 bg-white/10 px-4 py-1 text-xs font-bold tracking-[0.2em] text-white/90 uppercase"
+                            v-if="banner.descripcion"
+                            class="mt-2 line-clamp-2 max-w-md text-sm text-white/85 sm:mt-3 sm:text-base"
                         >
-                            {{ slides[actual].badge }}
+                            {{ banner.descripcion }}
                         </p>
-
-                        <h1
-                            class="text-3xl leading-tight font-black md:text-6xl"
-                        >
-                            {{ slides[actual].title }}
-                        </h1>
-
-                        <p
-                            class="mt-4 max-w-md text-sm text-white/90 md:text-lg"
-                        >
-                            {{ slides[actual].subtitle }}
-                        </p>
-
-                        <div class="mt-7 flex flex-wrap gap-3">
-                            <Link
-                                :href="slides[actual].href"
-                                class="rounded-full bg-gradient-to-r from-[var(--brand-green)] to-[var(--brand-blue)] px-8 py-3 text-sm font-black tracking-wide text-white uppercase shadow-xl transition duration-300 hover:-translate-y-1 hover:scale-[1.02]"
+                        <template v-if="banner.url">
+                            <a
+                                v-if="esExterno(banner.url)"
+                                :href="banner.url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-4 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03] active:scale-95 sm:mt-6"
+                                :tabindex="indice === actual ? 0 : -1"
                             >
-                                {{ slides[actual].cta }}
-                            </Link>
-
+                                Ver más <ArrowRight class="size-4" />
+                            </a>
                             <Link
-                                href="/carrito"
-                                class="rounded-full border border-white/35 bg-white/10 px-8 py-3 text-sm font-extrabold tracking-wide text-white uppercase transition hover:bg-white/20"
+                                v-else
+                                :href="banner.url"
+                                class="mt-4 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03] active:scale-95 sm:mt-6"
+                                :tabindex="indice === actual ? 0 : -1"
                             >
-                                Ir al carrito
+                                Ver más <ArrowRight class="size-4" />
                             </Link>
-                        </div>
+                        </template>
                     </div>
                 </div>
             </div>
 
-            <button
-                type="button"
-                class="absolute top-1/2 left-4 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30 md:flex"
-                @click="irA((actual - 1 + slides.length) % slides.length)"
-            >
-                ‹
-            </button>
-            <button
-                type="button"
-                class="absolute top-1/2 right-4 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30 md:flex"
-                @click="siguiente"
-            >
-                ›
-            </button>
+            <template v-if="total > 1">
+                <div
+                    class="absolute top-4 right-4 z-20 flex items-center gap-2 sm:top-auto sm:right-8 sm:bottom-8"
+                >
+                    <button
+                        type="button"
+                        class="inline-flex size-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-colors hover:bg-white/30"
+                        aria-label="Anterior"
+                        @click="ir(actual - 1)"
+                    >
+                        <ChevronLeft class="size-5" />
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex size-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-colors hover:bg-white/30"
+                        :aria-label="
+                            pausaUsuario
+                                ? 'Reanudar carrusel'
+                                : 'Pausar carrusel'
+                        "
+                        @click="pausaUsuario = !pausaUsuario"
+                    >
+                        <Play v-if="pausaUsuario" class="size-4" />
+                        <Pause v-else class="size-4" />
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex size-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-colors hover:bg-white/30"
+                        aria-label="Siguiente"
+                        @click="ir(actual + 1)"
+                    >
+                        <ChevronRight class="size-5" />
+                    </button>
+                </div>
+            </template>
+        </div>
 
-            <div
-                class="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/30 px-3 py-2 backdrop-blur-sm"
+        <div
+            v-if="total > 1"
+            class="mt-4 flex items-center justify-center gap-2"
+            role="tablist"
+            aria-label="Elegir diapositiva"
+        >
+            <button
+                v-for="(banner, indice) in banners"
+                :key="banner.id"
+                type="button"
+                role="tab"
+                class="group relative h-2 overflow-hidden rounded-full bg-foreground/15 transition-[width] duration-500"
+                :class="
+                    indice === actual
+                        ? 'w-10'
+                        : 'w-2 hover:bg-muted-foreground/40'
+                "
+                :aria-selected="indice === actual"
+                :aria-label="`Ir a la diapositiva ${indice + 1}`"
+                @click="ir(indice)"
             >
-                <button
-                    v-for="(slide, index) in slides"
-                    :key="slide.id"
-                    type="button"
-                    class="h-2.5 rounded-full transition"
-                    :class="
-                        index === actual
-                            ? 'w-6 bg-white'
-                            : 'w-2.5 bg-white/60 hover:bg-white'
-                    "
-                    @click="irA(index)"
+                <span
+                    v-if="indice === actual"
+                    :key="`p-${actual}`"
+                    class="absolute inset-y-0 left-0 rounded-full bg-brand-green"
+                    :class="enMovimiento ? 'hero-progreso' : 'w-full'"
+                    :style="{ animationDuration: `${INTERVALO}ms` }"
                 />
-            </div>
+            </button>
         </div>
     </section>
 </template>
+
+<style scoped>
+.hero-progreso {
+    animation-name: hero-progreso;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+@keyframes hero-progreso {
+    from {
+        width: 0%;
+    }
+    to {
+        width: 100%;
+    }
+}
+</style>

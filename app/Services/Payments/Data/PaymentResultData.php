@@ -2,8 +2,8 @@
 
 namespace App\Services\Payments\Data;
 
-class PaymentResultData {
-
+class PaymentResultData
+{
     public function __construct(
         public readonly bool $successful,
         public readonly string $status,
@@ -11,8 +11,7 @@ class PaymentResultData {
         public readonly ?string $authorization = null,
         public readonly ?array $rawResponse = null,
         public readonly ?string $message = null,
-    ) {
-    }
+    ) {}
 
     public static function success(
         string $status,
@@ -45,5 +44,4 @@ class PaymentResultData {
             message: $message,
         );
     }
-
 }

@@ -1,6 +1,13 @@
 <?php
 
 return [
+    /*
+    | Pagos en línea (tarjeta / Openpay). Deshabilitados: la tienda opera con transferencia
+    | y efectivo. Mientras sea false, PaymentService::charge() y PaymentGatewayManager lanzan
+    | OnlinePaymentsDisabledException y el método `openpay` no puede activarse desde el panel.
+    */
+    'enabled' => (bool) env('PAYMENTS_ONLINE_ENABLED', false),
+
     'default' => env('PAYMENT_GATEWAY', 'openpay'),
 
     'gateways' => [

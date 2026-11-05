@@ -15,8 +15,8 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->use(RefreshDatabase::class)
+    ->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------
@@ -48,3 +48,6 @@ function something()
 {
     // ..
 }
+
+// Helpers de dominio compartidos por todos los equipos (tests/Helpers/Dominio.php).
+require_once __DIR__.'/Helpers/Dominio.php';

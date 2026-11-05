@@ -83,3 +83,12 @@ test('correct password must be provided to delete account', function () {
 
     expect($user->fresh())->not->toBeNull();
 });
+test('el unico administrador no puede eliminar su cuenta', function () {
+    $admin = User::factory()->create(['rol' => User::ROL_ADMIN]);
+
+    $this->actingAs($admin)
+        ->delete(route('profile.destroy'), ['password' => 'password'])
+        ->assertSessionHasErrors('password');
+
+    expect($admin->fresh())->not->toBeNull();
+});

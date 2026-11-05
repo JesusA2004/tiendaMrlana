@@ -46,26 +46,27 @@ const pinInputContainerRef = useTemplateRef('pinInputContainerRef');
 const modalConfig = computed<TwoFactorConfigContent>(() => {
     if (props.twoFactorEnabled) {
         return {
-            title: 'Two-factor authentication enabled',
+            title: 'Autenticación en dos pasos activada',
             description:
-                'Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.',
-            buttonText: 'Close',
+                'La autenticación en dos pasos ya está activa. Escanea el código QR o escribe la clave de configuración en tu aplicación de autenticación.',
+            buttonText: 'Cerrar',
         };
     }
 
     if (showVerificationStep.value) {
         return {
-            title: 'Verify authentication code',
-            description: 'Enter the 6-digit code from your authenticator app',
-            buttonText: 'Continue',
+            title: 'Verifica el código de autenticación',
+            description:
+                'Escribe el código de 6 dígitos de tu aplicación de autenticación.',
+            buttonText: 'Continuar',
         };
     }
 
     return {
-        title: 'Enable two-factor authentication',
+        title: 'Activa la autenticación en dos pasos',
         description:
-            'To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app',
-        buttonText: 'Continue',
+            'Para terminar, escanea el código QR o escribe la clave de configuración en tu aplicación de autenticación.',
+        buttonText: 'Continuar',
     };
 });
 
@@ -111,7 +112,7 @@ watch(
 
 <template>
     <Dialog :open="isOpen" @update:open="isOpen = $event">
-        <DialogContent class="sm:max-w-md">
+        <DialogContent class="rounded-3xl sm:max-w-md">
             <DialogHeader class="flex items-center justify-center">
                 <div
                     class="mb-3 w-auto rounded-full border border-border bg-card p-0.5 shadow-sm"
@@ -142,7 +143,9 @@ watch(
                         />
                     </div>
                 </div>
-                <DialogTitle>{{ modalConfig.title }}</DialogTitle>
+                <DialogTitle class="text-center font-display text-xl">{{
+                    modalConfig.title
+                }}</DialogTitle>
                 <DialogDescription class="text-center">
                     {{ modalConfig.description }}
                 </DialogDescription>
@@ -197,7 +200,7 @@ watch(
                                 class="absolute inset-0 top-1/2 h-px w-full bg-border"
                             />
                             <span class="relative bg-card px-2 py-1"
-                                >or, enter the code manually</span
+                                >o escribe el código manualmente</span
                             >
                         </div>
 
@@ -218,15 +221,22 @@ watch(
                                         type="text"
                                         readonly
                                         :value="manualSetupKey"
-                                        class="h-full w-full bg-background p-3 text-foreground"
+                                        aria-label="Clave de configuración"
+                                        class="h-full w-full min-w-0 bg-background p-3 text-foreground"
                                     />
                                     <button
+                                        type="button"
+                                        :aria-label="
+                                            copied
+                                                ? 'Clave copiada'
+                                                : 'Copiar clave'
+                                        "
                                         @click="copy(manualSetupKey || '')"
                                         class="relative block h-auto border-l border-border px-3 hover:bg-muted"
                                     >
                                         <Check
                                             v-if="copied"
-                                            class="w-4 text-green-500"
+                                            class="w-4 text-brand-green-strong"
                                         />
                                         <Copy v-else class="w-4" />
                                     </button>
@@ -278,14 +288,14 @@ watch(
                                     @click="showVerificationStep = false"
                                     :disabled="processing"
                                 >
-                                    Back
+                                    Atrás
                                 </Button>
                                 <Button
                                     type="submit"
                                     class="w-auto flex-1"
                                     :disabled="processing || code.length < 6"
                                 >
-                                    Confirm
+                                    Confirmar
                                 </Button>
                             </div>
                         </div>

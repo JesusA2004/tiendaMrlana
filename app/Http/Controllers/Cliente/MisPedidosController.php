@@ -2,122 +2,116 @@
 
 namespace App\Http\Controllers\Cliente;
 
+use App\Enums\EstadoLogistico;
+use App\Enums\EstadoPago;
+use App\Enums\EstatusPedido;
+use App\Enums\MetodoPagoClave;
+use App\Http\Controllers\Cliente\Concerns\PresentaPedido;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Publico\CheckoutController;
 use App\Models\Pedido;
+use App\Services\Configuracion\ConfiguracionTienda;
+use App\Services\Pedidos\PedidoWorkflow;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class MisPedidosController extends Controller {
+/**
+ * Pedidos del cliente autenticado. Sólo pedidos propios (ajenos → 404).
+ */
+class MisPedidosController extends Controller
+{
+    use PresentaPedido;
 
-    public function index(Request $request): Response {
-        $pedidos = Pedido::query()
-            ->with('items')
-            ->where('user_id', $request->user()->id)
-            ->latest()
+    /** Filtros visibles para el cliente (agrupan estatus generales). */
+    private const FILTROS = [
+        'por_pagar' => [EstatusPedido::PendienteCotizacion, EstatusPedido::EleccionEnvio, EstatusPedido::PendientePago, EstatusPedido::PagoEnRevision],
+        'en_proceso' => [EstatusPedido::Confirmado, EstatusPedido::EnPreparacion, EstatusPedido::ListoEnvio, EstatusPedido::Enviado],
+        'entregados' => [EstatusPedido::Entregado],
+        'cerrados' => [EstatusPedido::Cancelado, EstatusPedido::Vencido, EstatusPedido::Reembolsado],
+    ];
+
+    public function __construct(private readonly ConfiguracionTienda $config) {}
+
+    public function index(Request $request): Response
+    {
+        $userId = $request->user()->id;
+        $filtro = array_key_exists((string) $request->query('estado'), self::FILTROS) ? (string) $request->query('estado') : null;
+
+        $base = Pedido::query()->where('user_id', $userId);
+
+        $conteos = ['todos' => (clone $base)->count()];
+        foreach (self::FILTROS as $clave => $estatus) {
+            $conteos[$clave] = (clone $base)->whereIn('estatus', array_map(fn ($e) => $e->value, $estatus))->count();
+        }
+
+        $pedidos = (clone $base)
+            ->when($filtro, fn (Builder $q) => $q->whereIn('estatus', array_map(fn ($e) => $e->value, self::FILTROS[$filtro])))
+            ->withCount('items')
+            ->with(['items' => fn ($q) => $q->select('id', 'pedido_id', 'producto_id', 'nombre', 'cantidad')->with('producto')])
+            ->latest('id')
             ->paginate(10)
-            ->through(function (Pedido $pedido) {
-                return [
-                    'id' => $pedido->id,
-                    'folio' => $pedido->folio,
-                    'estatus' => $pedido->estatus,
-                    'total' => (float) $pedido->total,
-                    'created_at' => $pedido->created_at?->toDateTimeString(),
-                    'items' => $pedido->items->map(fn ($item) => [
-                        'id' => $item->id,
-                        'nombre' => $item->nombre,
-                        'cantidad' => (int) $item->cantidad,
-                    ])->values(),
-                ];
-            });
-        return Inertia::render('Cliente/Pedidos/Index', [
-            'pedidos' => $pedidos,
-        ]);
-    }
-
-    public function show(Request $request, Pedido $pedido): Response {
-        abort_unless((int) $pedido->user_id === (int) $request->user()->id, 404);
-        $pedido->load([
-            'direccion',
-            'items.producto:id,nombre,slug',
-            'pagos.metodoPago:id,nombre,clave',
-            'historial.user:id,name',
-        ]);
-        return Inertia::render('Cliente/Pedidos/Show', [
-            'pedido' => [
+            ->withQueryString()
+            ->through(fn (Pedido $pedido) => [
                 'id' => $pedido->id,
                 'folio' => $pedido->folio,
-                'estatus' => $pedido->estatus,
-                'moneda' => $pedido->moneda,
-                'subtotal' => (float) $pedido->subtotal,
-                'descuento' => (float) $pedido->descuento,
-                'envio' => (float) $pedido->envio,
-                'impuesto' => (float) $pedido->impuesto,
+                'created_at' => $pedido->created_at?->toIso8601String(),
                 'total' => (float) $pedido->total,
-                'nombre_cliente' => $pedido->nombre_cliente,
-                'correo_cliente' => $pedido->correo_cliente,
-                'telefono_cliente' => $pedido->telefono_cliente,
-                'notas_cliente' => $pedido->notas_cliente,
-                'pagado_en' => $pedido->pagado_en?->toDateTimeString(),
-                'created_at' => $pedido->created_at?->toDateTimeString(),
-                'direccion' => $pedido->direccion ? [
-                    'alias' => $pedido->direccion->alias,
-                    'nombre_receptor' => $pedido->direccion->nombre_receptor,
-                    'telefono' => $pedido->direccion->telefono,
-                    'calle' => $pedido->direccion->calle,
-                    'numero_exterior' => $pedido->direccion->numero_exterior,
-                    'numero_interior' => $pedido->direccion->numero_interior,
-                    'colonia' => $pedido->direccion->colonia,
-                    'municipio' => $pedido->direccion->municipio,
-                    'estado' => $pedido->direccion->estado,
-                    'pais' => $pedido->direccion->pais,
-                    'codigo_postal' => $pedido->direccion->codigo_postal,
-                    'referencias' => $pedido->direccion->referencias,
-                ] : null,
-                'items' => $pedido->items->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'producto_nombre' => $item->producto?->nombre,
-                        'producto_slug' => $item->producto?->slug,
-                        'sku' => $item->sku,
-                        'nombre' => $item->nombre,
-                        'cantidad' => (int) $item->cantidad,
-                        'precio_unitario' => (float) $item->precio_unitario,
-                        'subtotal' => (float) $item->subtotal,
-                    ];
-                })->values(),
-                'pagos' => $pedido->pagos->map(function ($pago) {
-                    return [
-                        'id' => $pago->id,
-                        'estatus' => $pago->estatus,
-                        'monto' => (float) $pago->monto,
-                        'moneda' => $pago->moneda,
-                        'referencia_externa' => $pago->referencia_externa,
-                        'autorizacion' => $pago->autorizacion,
-                        'pagado_en' => $pago->pagado_en?->toDateTimeString(),
-                        'metodo_pago' => $pago->metodoPago ? [
-                            'nombre' => $pago->metodoPago->nombre,
-                            'clave' => $pago->metodoPago->clave,
-                        ] : null,
-                    ];
-                })->values(),
-                'historial' => $pedido->historial
-                    ->sortByDesc('created_at')
-                    ->values()
-                    ->map(function ($row) {
-                        return [
-                            'id' => $row->id,
-                            'estatus' => $row->estatus,
-                            'comentario' => $row->comentario,
-                            'created_at' => $row->created_at?->toDateTimeString(),
-                            'user' => $row->user ? [
-                                'id' => $row->user->id,
-                                'name' => $row->user->name,
-                            ] : null,
-                        ];
-                    }),
-            ],
+                'envio_por_cotizar' => $pedido->envioPendiente(),
+                'envio_esperando_eleccion' => $pedido->esperaEleccionEnvio(),
+                'metodo_pago_label' => MetodoPagoClave::labelDe($pedido->metodo_pago) ?? 'Sin definir',
+                'estatus' => $this->info(EstatusPedido::class, $pedido->estatus),
+                'estado_pago' => $this->info(EstadoPago::class, $pedido->estado_pago),
+                'estado_logistico' => $this->info(EstadoLogistico::class, $pedido->estado_logistico),
+                'items_count' => (int) $pedido->items_count,
+                'piezas' => (int) $pedido->items->sum('cantidad'),
+                'imagenes' => $pedido->items->take(3)->map(fn ($i) => $i->producto?->imagenPrincipalUrl())->filter()->values(),
+                'primer_producto' => $pedido->items->first()?->nombre,
+                'requiere_accion' => ($pedido->esperaEleccionEnvio() && ! $pedido->esTerminal()) || (in_array($pedido->estado_pago, [EstadoPago::Pendiente->value, EstadoPago::Rechazado->value], true)
+                    && $pedido->metodo_pago === MetodoPagoClave::Transferencia->value
+                    && ! $pedido->envioPendiente()
+                    && ! $pedido->esTerminal()),
+            ]);
+
+        return Inertia::render('Cliente/Pedidos/Index', [
+            'pedidos' => $pedidos,
+            'filtro' => $filtro,
+            'conteos' => $conteos,
         ]);
     }
 
+    public function show(Request $request, Pedido $pedido): Response
+    {
+        abort_unless((int) $pedido->user_id === (int) $request->user()->id, 404);
+
+        return Inertia::render('Cliente/Pedidos/Show', [
+            'pedido' => $this->presentarPedido($pedido),
+            'instrucciones' => $this->instruccionesPago($pedido, true, $this->config),
+            'urls' => [
+                'pdf' => route('cliente.pedidos.pdf', $pedido),
+                'comprobante' => route('cliente.pedidos.comprobantes.store', $pedido),
+                'elegir_envio' => route('cliente.pedidos.envio.elegir', $pedido),
+            ],
+            'comprobante_reglas' => CheckoutController::reglasComprobante(),
+        ]);
+    }
+
+    /**
+     * El cliente elige una de las opciones de envío cotizadas (pedido ajeno → 404).
+     * El workflow valida estado y pertenencia de la opción con bloqueo.
+     */
+    public function elegirEnvio(Request $request, Pedido $pedido, PedidoWorkflow $workflow): RedirectResponse
+    {
+        abort_unless((int) $pedido->user_id === (int) $request->user()->id, 404);
+
+        $data = $request->validate(['opcion_id' => ['required', 'integer']], [
+            'opcion_id.required' => 'Elige una opción de envío.',
+        ]);
+
+        $workflow->elegirOpcionEnvio($pedido, $request->user(), (int) $data['opcion_id']);
+
+        return back()->with('success', 'Listo, elegiste tu envío. Ya puedes ver el total final y cómo pagar.');
+    }
 }

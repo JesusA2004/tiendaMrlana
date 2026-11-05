@@ -9,8 +9,8 @@ use App\Services\Payments\PaymentGatewayInterface;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
-class OpenpayGateway implements PaymentGatewayInterface {
-
+class OpenpayGateway implements PaymentGatewayInterface
+{
     public function name(): string
     {
         return 'openpay';
@@ -105,5 +105,4 @@ class OpenpayGateway implements PaymentGatewayInterface {
 
         return rtrim($baseUrl, '/').'/v1/'.$merchantId.'/charges';
     }
-
 }

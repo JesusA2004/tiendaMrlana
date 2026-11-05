@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Builder;
 
-class Oferta extends Model {
+class Oferta extends Model
+{
+    use HasFactory;
 
     protected $table = 'ofertas';
 
@@ -30,15 +33,18 @@ class Oferta extends Model {
         'activa' => 'boolean',
     ];
 
-    public function categoria(): BelongsTo {
+    public function categoria(): BelongsTo
+    {
         return $this->belongsTo(Categoria::class, 'categoria_id');
     }
 
-    public function marca(): BelongsTo {
+    public function marca(): BelongsTo
+    {
         return $this->belongsTo(Marca::class, 'marca_id');
     }
 
-    public function productos(): BelongsToMany {
+    public function productos(): BelongsToMany
+    {
         return $this->belongsToMany(
             Producto::class,
             'oferta_producto',
@@ -47,7 +53,8 @@ class Oferta extends Model {
         )->withTimestamps();
     }
 
-    public function scopeActivas(Builder $query): Builder {
+    public function scopeActivas(Builder $query): Builder
+    {
         return $query
             ->where('activa', true)
             ->where(function ($subQuery) {
@@ -61,5 +68,4 @@ class Oferta extends Model {
                     ->orWhere('termina_en', '>=', now());
             });
     }
-
 }

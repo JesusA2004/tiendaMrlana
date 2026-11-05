@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { CircleCheck, MailCheck } from 'lucide-vue-next';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -8,9 +9,9 @@ import { send } from '@/routes/verification';
 
 defineOptions({
     layout: {
-        title: 'Verify email',
+        title: 'Verifica tu correo',
         description:
-            'Please verify your email address by clicking on the link we just emailed to you.',
+            'Te enviamos un enlace de verificación. Ábrelo desde tu correo para activar tu cuenta.',
     },
 });
 
@@ -20,28 +21,43 @@ defineProps<{
 </script>
 
 <template>
-    <Head title="Email verification" />
+    <Head title="Verificación de correo" />
+
+    <div class="mb-6 flex justify-center" aria-hidden="true">
+        <span
+            class="flex size-14 items-center justify-center rounded-2xl bg-brand-green-soft text-brand-green-strong"
+        >
+            <MailCheck class="size-7" />
+        </span>
+    </div>
 
     <div
         v-if="status === 'verification-link-sent'"
-        class="mb-4 text-center text-sm font-medium text-green-600"
+        role="status"
+        class="mb-6 flex items-start gap-2 rounded-2xl border border-brand-green/40 bg-brand-green-soft px-4 py-3 text-sm font-medium text-brand-green-strong"
     >
-        A new verification link has been sent to the email address you provided
-        during registration.
+        <CircleCheck class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <span>
+            Te enviamos un nuevo enlace de verificación al correo con el que te
+            registraste.
+        </span>
     </div>
 
     <Form
         v-bind="send.form()"
-        class="space-y-6 text-center"
+        class="space-y-5 text-center"
         v-slot="{ processing }"
     >
-        <Button :disabled="processing" variant="secondary">
+        <Button
+            :disabled="processing"
+            class="h-11 w-full rounded-full text-[15px] font-semibold"
+        >
             <Spinner v-if="processing" />
-            Resend verification email
+            Reenviar correo de verificación
         </Button>
 
         <TextLink :href="logout()" as="button" class="mx-auto block text-sm">
-            Log out
+            Cerrar sesión
         </TextLink>
     </Form>
 </template>

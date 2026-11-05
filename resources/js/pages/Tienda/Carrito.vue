@@ -1,723 +1,587 @@
 <script setup lang="ts">
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import {
+    AlertTriangle,
+    ArrowRight,
+    Clock3,
+    ImageOff,
+    Loader2,
+    LockKeyhole,
+    ShieldCheck,
+    ShoppingBag,
+    Tag,
+    Trash2,
+    X,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { moneda } from '@/components/compra/formato';
+import ResumenTotales from '@/components/compra/ResumenTotales.vue';
+import SelectorCantidad from '@/components/compra/SelectorCantidad.vue';
+import type {
+    CotizacionEnvio,
+    CuponAplicado,
+    LineaCarrito,
+    ResumenCompra,
+} from '@/components/compra/types';
+import AvisoTarjetas from '@/components/public/AvisoTarjetas.vue';
+import { urls } from '@/components/public/tienda';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import PublicLayout from '@/layouts/PublicLayout.vue';
-import heroImg from '@/img/hero-tienda.jpeg';
-
-interface OfertaInfo {
-    id: number;
-    nombre: string;
-    tipo: string;
-    valor: number;
-}
-
-interface CuponInfo {
-    codigo: string;
-    nombre: string;
-    tipo: string;
-    valor: number;
-    descuento_aplicado: number;
-}
-
-interface ItemCarrito {
-    producto_id: number;
-    nombre: string;
-    slug: string;
-    sku: string;
-    imagen?: string | null;
-    precio: number;
-    precio_original?: number | null;
-    precio_comparacion?: number | null;
-    cantidad: number;
-    stock: number;
-    subtotal: number;
-    subtotal_original?: number;
-    descuento_oferta?: number;
-    tiene_oferta?: boolean;
-    oferta?: OfertaInfo | null;
-}
+import carrito from '@/routes/carrito';
+import checkout from '@/routes/checkout';
 
 const props = defineProps<{
-    items: ItemCarrito[];
-    cupon: CuponInfo | null;
-    resumen: {
-        subtotal: number;
-        envio: number;
-        descuento: number;
-        descuento_ofertas: number;
-        descuento_cupon: number;
-        total: number;
-        total_productos?: number;
-    };
+    items: LineaCarrito[];
+    cupon: CuponAplicado | null;
+    cupon_error: string | null;
+    resumen: ResumenCompra;
+    envio: CotizacionEnvio;
+    errores: string[];
+    puede_comprar: boolean;
+    autenticado: boolean;
 }>();
 
-const totalItems = computed(
-    () => props.resumen.total_productos || props.items.length,
+const actualizando = ref<number | null>(null);
+const confirmarVaciar = ref(false);
+const vaciando = ref(false);
+
+const cuponForm = useForm({ codigo: '' });
+
+const piezas = computed(() =>
+    props.items.reduce((total, item) => total + item.cantidad, 0),
 );
-const couponCode = ref(props.cupon?.codigo ?? '');
+const hayErrores = computed(
+    () => props.errores.length > 0 || props.cupon_error !== null,
+);
 
-const page = usePage<{
-    flash?: {
-        success?: string;
-        error?: string;
-    };
-}>();
-
-const couponError = ref('');
-const applyingCoupon = ref(false);
-const removingCoupon = ref(false);
-
-const flashSuccess = computed(() => page.props.flash?.success ?? '');
-const flashError = computed(() => page.props.flash?.error ?? '');
-
-const formatearMoneda = (valor: number) => {
-    return new Intl.NumberFormat('es-MX', {
-        style: 'currency',
-        currency: 'MXN',
-    }).format(Number(valor ?? 0));
-};
-
-const actualizarCantidad = (item: ItemCarrito, cantidad: number) => {
-    if (cantidad < 1 || cantidad > item.stock) return;
-
+function cambiarCantidad(item: LineaCarrito, cantidad: number) {
+    actualizando.value = item.producto_id;
     router.patch(
-        `/carrito/${item.producto_id}`,
+        carrito.actualizar.url(item.producto_id),
         { cantidad },
         {
             preserveScroll: true,
-            preserveState: true,
+            onFinish: () => (actualizando.value = null),
         },
     );
-};
+}
 
-const incrementar = (item: ItemCarrito) => {
-    if (item.cantidad >= item.stock) return;
-    actualizarCantidad(item, item.cantidad + 1);
-};
-
-const disminuir = (item: ItemCarrito) => {
-    if (item.cantidad <= 1) return;
-    actualizarCantidad(item, item.cantidad - 1);
-};
-
-const onInputCantidad = (item: ItemCarrito, event: Event) => {
-    const target = event.target as HTMLInputElement;
-    const cantidad = Number(target.value);
-
-    if (!Number.isFinite(cantidad)) return;
-    actualizarCantidad(item, cantidad);
-};
-
-const quitarDelCarrito = (item: ItemCarrito) => {
-    router.delete(`/carrito/${item.producto_id}`, {
+function eliminar(item: LineaCarrito) {
+    actualizando.value = item.producto_id;
+    router.delete(carrito.eliminar.url(item.producto_id), {
         preserveScroll: true,
-        preserveState: true,
+        onFinish: () => (actualizando.value = null),
     });
-};
+}
 
-const vaciarCarrito = () => {
-    router.delete('/carrito', {
+function vaciar() {
+    router.delete(carrito.vaciar.url(), {
         preserveScroll: true,
-        preserveState: true,
-    });
-};
-
-const aplicarCupon = () => {
-    couponError.value = '';
-    if (!couponCode.value.trim()) {
-        couponError.value = 'Ingresa un código de descuento.';
-        return;
-    }
-    if (!props.items.length) {
-        couponError.value = 'Tu carrito está vacío.';
-        return;
-    }
-    applyingCoupon.value = true;
-    router.post(
-        '/carrito/cupon',
-        { codigo: couponCode.value.trim() },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            onFinish: () => {
-                applyingCoupon.value = false;
-            },
-        },
-    );
-};
-
-const quitarCupon = () => {
-    removingCoupon.value = true;
-    couponError.value = '';
-    router.delete('/carrito/cupon', {
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => {
-            couponCode.value = '';
-        },
+        onStart: () => (vaciando.value = true),
         onFinish: () => {
-            removingCoupon.value = false;
+            vaciando.value = false;
+            confirmarVaciar.value = false;
         },
     });
-};
+}
+
+function aplicarCupon() {
+    cuponForm.codigo = cuponForm.codigo.trim().toUpperCase();
+    cuponForm.post(carrito.cupon.aplicar.url(), {
+        preserveScroll: true,
+        onSuccess: () => cuponForm.reset(),
+    });
+}
+
+function quitarCupon() {
+    router.delete(carrito.cupon.quitar.url(), { preserveScroll: true });
+}
+
+function etiquetaDisponibilidad(item: LineaCarrito): string | null {
+    if (item.modalidad_venta === 'bajo_pedido') {
+        return item.tiempo_entrega_dias
+            ? `Bajo pedido · entrega aprox. ${item.tiempo_entrega_dias} días`
+            : 'Bajo pedido';
+    }
+
+    if (item.stock > 0 && item.stock <= 5) {
+        return `Quedan ${item.stock} pieza${item.stock === 1 ? '' : 's'}`;
+    }
+
+    return null;
+}
 </script>
 
 <template>
+    <Head title="Tu carrito" />
+
     <PublicLayout>
-        <section class="relative overflow-hidden">
-            <img
-                :src="heroImg"
-                alt="Carrito"
-                class="h-[190px] w-full object-cover md:h-[280px]"
-            />
+        <section class="bg-surface/60">
             <div
-                class="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,17,28,0.58)_0%,rgba(9,17,28,0.72)_100%)]"
-            />
-
-            <div class="absolute inset-0 flex items-center justify-center">
-                <div class="px-4 text-center text-white">
-                    <p
-                        class="text-[11px] font-bold tracking-[0.35em] text-white/70 uppercase md:text-xs"
-                    >
-                        Tienda Mr Lana
-                    </p>
-                    <h1 class="mt-3 text-4xl font-black uppercase md:text-6xl">
-                        Mi carrito
-                    </h1>
-                    <p class="mt-3 text-sm text-white/85 md:text-base">
-                        Revisa tus productos antes de continuar al pago
-                    </p>
-                </div>
-            </div>
-
-            <div
-                class="absolute right-0 bottom-0 left-0 h-10 bg-gradient-to-r from-[#7dd03c] to-[#30beef]"
-            />
-        </section>
-
-        <section class="mx-auto max-w-7xl px-4 py-10 md:px-6 md:py-12">
-            <div
-                class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
+                class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8"
             >
-                <div>
-                    <h2
-                        class="text-3xl font-black tracking-tight text-neutral-900 md:text-4xl"
-                    >
-                        Carrito de compras
-                    </h2>
-                    <p class="mt-2 text-sm text-neutral-500 md:text-base">
-                        {{ totalItems }}
-                        {{ totalItems === 1 ? 'producto' : 'productos' }} en tu
-                        carrito
-                    </p>
-                </div>
-
-                <div class="flex flex-col gap-3 sm:flex-row">
-                    <Link
-                        href="/productos"
-                        class="inline-flex items-center justify-center rounded-full border border-[#30beef] bg-white px-6 py-3 text-sm font-black text-[#30beef] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#30beef] hover:text-white hover:shadow-md"
-                    >
-                        Seguir comprando
-                    </Link>
-
-                    <button
-                        v-if="items.length"
-                        type="button"
-                        class="inline-flex items-center justify-center rounded-full border border-red-200 bg-white px-6 py-3 text-sm font-black text-red-500 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-50 hover:shadow-md"
-                        @click="vaciarCarrito"
-                    >
-                        Vaciar carrito
-                    </button>
-                </div>
-            </div>
-
-            <div class="grid gap-8 xl:grid-cols-[minmax(0,1.65fr)_390px]">
-                <div
-                    class="overflow-hidden rounded-[30px] border border-[#dfdfdf] bg-white shadow-[0_18px_60px_rgba(9,17,28,0.06)]"
+                <nav
+                    class="mb-6 flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                    aria-label="Pasos de compra"
                 >
-                    <div class="border-b border-[#ececec] px-6 py-5 md:px-8">
-                        <h3
-                            class="text-2xl font-black tracking-tight text-neutral-900"
-                        >
-                            Productos agregados
-                        </h3>
-                    </div>
+                    <span class="text-brand-green-strong">1. Carrito</span>
+                    <span aria-hidden="true">›</span>
+                    <span>2. Datos y pago</span>
+                    <span aria-hidden="true">›</span>
+                    <span>3. Confirmación</span>
+                </nav>
 
-                    <div v-if="items.length" class="divide-y divide-[#ececec]">
+                <header
+                    class="mb-6 flex flex-wrap items-end justify-between gap-3"
+                >
+                    <div>
+                        <h1
+                            class="font-display text-3xl font-extrabold tracking-tight sm:text-4xl"
+                        >
+                            Tu carrito
+                        </h1>
+                        <p
+                            v-if="items.length"
+                            class="mt-1 text-sm text-muted-foreground"
+                        >
+                            {{ piezas }} pieza{{ piezas === 1 ? '' : 's' }} ·
+                            los precios se confirman al finalizar tu compra.
+                        </p>
+                    </div>
+                    <div v-if="items.length" class="flex items-center gap-2">
+                        <template v-if="confirmarVaciar">
+                            <span class="text-sm">¿Vaciar el carrito?</span>
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                :disabled="vaciando"
+                                @click="vaciar"
+                            >
+                                <Loader2
+                                    v-if="vaciando"
+                                    class="animate-spin"
+                                    aria-hidden="true"
+                                />
+                                Sí, vaciar
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                @click="confirmarVaciar = false"
+                            >
+                                Cancelar
+                            </Button>
+                        </template>
+                        <Button
+                            v-else
+                            size="sm"
+                            variant="ghost"
+                            class="text-muted-foreground"
+                            @click="confirmarVaciar = true"
+                        >
+                            <Trash2 aria-hidden="true" />
+                            Vaciar carrito
+                        </Button>
+                    </div>
+                </header>
+
+                <!-- Estado vacío -->
+                <div
+                    v-if="!items.length"
+                    class="flex flex-col items-center rounded-3xl border border-dashed border-border bg-background px-6 py-16 text-center"
+                >
+                    <span
+                        class="mb-4 flex size-16 items-center justify-center rounded-full bg-brand-green-soft text-brand-green-strong"
+                    >
+                        <ShoppingBag class="size-8" aria-hidden="true" />
+                    </span>
+                    <h2 class="font-display text-2xl font-bold">
+                        Tu carrito está vacío
+                    </h2>
+                    <p class="mt-2 max-w-sm text-sm text-muted-foreground">
+                        Explora el catálogo y agrega lo que te guste. Aquí verás
+                        tus productos antes de pagar.
+                    </p>
+                    <Button as-child size="lg" class="mt-6 rounded-full">
+                        <Link :href="urls.catalogo">
+                            Ver productos
+                            <ArrowRight aria-hidden="true" />
+                        </Link>
+                    </Button>
+                </div>
+
+                <div
+                    v-else
+                    class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start"
+                >
+                    <!-- Líneas -->
+                    <div class="space-y-3">
+                        <div
+                            v-if="errores.length"
+                            class="flex gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+                            role="alert"
+                        >
+                            <AlertTriangle
+                                class="mt-0.5 size-5 shrink-0 text-destructive"
+                                aria-hidden="true"
+                            />
+                            <div>
+                                <p class="font-semibold text-destructive">
+                                    Revisa tu carrito antes de continuar
+                                </p>
+                                <ul
+                                    class="mt-1 list-disc space-y-0.5 pl-4 text-foreground"
+                                >
+                                    <li v-for="e in errores" :key="e">
+                                        {{ e }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
                         <article
                             v-for="item in items"
                             :key="item.producto_id"
-                            class="p-5 transition-colors duration-300 hover:bg-[#fafafa] md:p-6"
+                            class="relative flex gap-3 rounded-2xl border bg-background p-3 shadow-xs transition sm:gap-4 sm:p-4"
+                            :class="[
+                                item.error
+                                    ? 'border-destructive/40'
+                                    : 'border-border',
+                                actualizando === item.producto_id
+                                    ? 'opacity-60'
+                                    : '',
+                            ]"
+                            :aria-busy="actualizando === item.producto_id"
                         >
-                            <div
-                                class="grid gap-5 md:grid-cols-[150px_minmax(0,1fr)]"
-                            >
-                                <Link
-                                    :href="`/productos/${item.slug}`"
-                                    class="group overflow-hidden rounded-[24px] border border-[#e8e8e8] bg-[#f7f7f7] shadow-sm transition-all duration-300 hover:shadow-md"
-                                >
-                                    <img
-                                        :src="
-                                            item.imagen ||
-                                            '/images/placeholder-producto.png'
-                                        "
-                                        :alt="item.nombre"
-                                        class="h-36 w-full object-cover transition duration-500 group-hover:scale-[1.05] md:h-full"
-                                    />
-                                </Link>
-
-                                <div class="min-w-0">
-                                    <div
-                                        class="flex flex-col gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between"
-                                    >
-                                        <div class="min-w-0">
-                                            <div
-                                                class="mb-3 flex flex-wrap items-center gap-2"
-                                            >
-                                                <span
-                                                    class="rounded-full bg-[#30beef]/10 px-3 py-1 text-[11px] font-black tracking-[0.12em] text-[#0f8fba] uppercase"
-                                                >
-                                                    SKU: {{ item.sku }}
-                                                </span>
-
-                                                <span
-                                                    v-if="item.tiene_oferta"
-                                                    class="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black tracking-[0.12em] text-emerald-700 uppercase"
-                                                >
-                                                    Oferta activa
-                                                </span>
-
-                                                <span
-                                                    v-if="item.stock <= 3"
-                                                    class="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black tracking-[0.12em] text-amber-700 uppercase"
-                                                >
-                                                    Últimas piezas
-                                                </span>
-                                            </div>
-
-                                            <Link
-                                                :href="`/productos/${item.slug}`"
-                                                class="block text-xl leading-tight font-black text-neutral-900 transition-colors duration-300 hover:text-[#30beef] md:text-2xl"
-                                            >
-                                                {{ item.nombre }}
-                                            </Link>
-
-                                            <p
-                                                class="mt-2 text-sm text-neutral-500"
-                                            >
-                                                Disponibles:
-                                                {{ item.stock }} pieza<span
-                                                    v-if="item.stock !== 1"
-                                                    >s</span
-                                                >
-                                            </p>
-
-                                            <div class="mt-5">
-                                                <div
-                                                    class="flex items-center gap-3"
-                                                >
-                                                    <span
-                                                        class="text-2xl font-black text-neutral-900 md:text-3xl"
-                                                    >
-                                                        {{
-                                                            formatearMoneda(
-                                                                item.precio,
-                                                            )
-                                                        }}
-                                                    </span>
-
-                                                    <span
-                                                        v-if="
-                                                            item.precio_original &&
-                                                            item.precio_original >
-                                                                item.precio
-                                                        "
-                                                        class="text-sm text-neutral-400 line-through"
-                                                    >
-                                                        {{
-                                                            formatearMoneda(
-                                                                item.precio_original,
-                                                            )
-                                                        }}
-                                                    </span>
-                                                </div>
-
-                                                <p
-                                                    v-if="
-                                                        item.tiene_oferta &&
-                                                        item.oferta
-                                                    "
-                                                    class="mt-2 text-xs font-bold tracking-[0.18em] text-emerald-600 uppercase"
-                                                >
-                                                    {{ item.oferta.nombre }}
-                                                </p>
-
-                                                <p
-                                                    class="mt-1 text-xs font-bold tracking-[0.18em] text-neutral-400 uppercase"
-                                                >
-                                                    Precio por unidad
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div class="grid gap-4 xl:w-[310px]">
-                                            <div
-                                                class="rounded-[24px] border border-[#e7e7e7] bg-white p-4 shadow-sm transition duration-300 hover:shadow-md"
-                                            >
-                                                <p
-                                                    class="text-xs font-bold tracking-[0.18em] text-neutral-400 uppercase"
-                                                >
-                                                    Cantidad
-                                                </p>
-
-                                                <div
-                                                    class="mt-3 inline-flex w-full items-center overflow-hidden rounded-2xl border border-[#d8d8d8] bg-white shadow-sm"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        class="grid h-12 w-12 place-items-center text-lg font-black text-neutral-700 transition hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-40"
-                                                        :disabled="
-                                                            item.cantidad <= 1
-                                                        "
-                                                        @click="disminuir(item)"
-                                                    >
-                                                        −
-                                                    </button>
-
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        :max="item.stock"
-                                                        :value="item.cantidad"
-                                                        class="h-12 w-full border-x border-[#e5e5e5] text-center text-sm font-black text-neutral-900 outline-none"
-                                                        @change="
-                                                            onInputCantidad(
-                                                                item,
-                                                                $event,
-                                                            )
-                                                        "
-                                                    />
-
-                                                    <button
-                                                        type="button"
-                                                        class="grid h-12 w-12 place-items-center text-lg font-black text-neutral-700 transition hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-40"
-                                                        :disabled="
-                                                            item.cantidad >=
-                                                            item.stock
-                                                        "
-                                                        @click="
-                                                            incrementar(item)
-                                                        "
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                class="rounded-[24px] border border-[#e7e7e7] bg-white p-4 shadow-sm transition duration-300 hover:shadow-md"
-                                            >
-                                                <div
-                                                    class="flex items-end justify-between gap-3"
-                                                >
-                                                    <div>
-                                                        <p
-                                                            class="text-xs font-bold tracking-[0.18em] text-neutral-400 uppercase"
-                                                        >
-                                                            Subtotal
-                                                        </p>
-
-                                                        <p
-                                                            v-if="
-                                                                item.subtotal_original &&
-                                                                item.subtotal_original >
-                                                                    item.subtotal
-                                                            "
-                                                            class="mt-2 text-sm text-neutral-400 line-through"
-                                                        >
-                                                            {{
-                                                                formatearMoneda(
-                                                                    item.subtotal_original,
-                                                                )
-                                                            }}
-                                                        </p>
-
-                                                        <p
-                                                            class="text-2xl font-black text-neutral-900 md:text-3xl"
-                                                        >
-                                                            {{
-                                                                formatearMoneda(
-                                                                    item.subtotal,
-                                                                )
-                                                            }}
-                                                        </p>
-
-                                                        <p
-                                                            v-if="
-                                                                item.descuento_oferta &&
-                                                                item.descuento_oferta >
-                                                                    0
-                                                            "
-                                                            class="mt-1 text-xs font-bold tracking-[0.16em] text-emerald-600 uppercase"
-                                                        >
-                                                            Ahorras
-                                                            {{
-                                                                formatearMoneda(
-                                                                    item.descuento_oferta,
-                                                                )
-                                                            }}
-                                                        </p>
-                                                    </div>
-
-                                                    <button
-                                                        type="button"
-                                                        class="inline-flex items-center justify-center rounded-full border border-red-200 px-4 py-2 text-sm font-black text-red-500 transition-all duration-300 hover:bg-red-50 hover:shadow-sm"
-                                                        @click="
-                                                            quitarDelCarrito(
-                                                                item,
-                                                            )
-                                                        "
-                                                    >
-                                                        Quitar
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div v-else class="px-6 py-16 text-center md:px-10">
-                        <div class="mx-auto max-w-md">
-                            <div
-                                class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-r from-[#7dd03c]/15 to-[#30beef]/15 text-3xl shadow-sm"
-                            >
-                                🛒
-                            </div>
-
-                            <h3
-                                class="mt-5 text-2xl font-black text-neutral-900"
-                            >
-                                Tu carrito está vacío
-                            </h3>
-
-                            <p class="mt-2 text-neutral-500">
-                                Explora el catálogo y agrega los productos que
-                                quieras revisar o comprar.
-                            </p>
-
                             <Link
-                                href="/productos"
-                                class="mt-6 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#7dd03c] to-[#30beef] px-6 py-3 text-sm font-black text-white transition-all duration-300 hover:-translate-y-0.5 hover:opacity-90 hover:shadow-md"
+                                :href="urls.producto(item.slug)"
+                                class="size-20 shrink-0 overflow-hidden rounded-xl bg-surface sm:size-28"
                             >
-                                Ir a la tienda
+                                <img
+                                    v-if="item.imagen"
+                                    :src="item.imagen"
+                                    :alt="item.nombre"
+                                    class="size-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <span
+                                    v-else
+                                    class="flex size-full items-center justify-center text-muted-foreground"
+                                >
+                                    <ImageOff
+                                        class="size-6"
+                                        aria-hidden="true"
+                                    />
+                                </span>
                             </Link>
-                        </div>
-                    </div>
-                </div>
 
-                <aside class="space-y-6">
-                    <div
-                        class="rounded-[30px] border border-[#dfdfdf] bg-white p-6 shadow-[0_18px_60px_rgba(9,17,28,0.06)] transition-shadow duration-300 hover:shadow-[0_22px_70px_rgba(9,17,28,0.08)]"
-                    >
-                        <h3 class="text-xl font-black text-neutral-900">
-                            Código de descuento
-                        </h3>
-
-                        <p class="mt-2 text-sm leading-6 text-neutral-500">
-                            Aplica un cupón válido para mejorar el total de tu
-                            compra.
-                        </p>
-
-                        <input
-                            v-model="couponCode"
-                            type="text"
-                            placeholder="Ingresa tu código"
-                            class="mt-4 h-12 w-full rounded-2xl border border-[#d5d5d5] bg-white px-4 text-sm text-neutral-900 transition-all duration-300 outline-none placeholder:text-neutral-400 focus:border-[#30beef] focus:ring-4 focus:ring-[#30beef]/10"
-                        />
-
-                        <p
-                            v-if="couponError"
-                            class="mt-2 text-sm font-semibold text-red-500"
-                        >
-                            {{ couponError }}
-                        </p>
-
-                        <p
-                            v-else-if="flashError"
-                            class="mt-2 text-sm font-semibold text-red-500"
-                        >
-                            {{ flashError }}
-                        </p>
-
-                        <p
-                            v-else-if="flashSuccess"
-                            class="mt-2 text-sm font-semibold text-emerald-600"
-                        >
-                            {{ flashSuccess }}
-                        </p>
-
-                        <div class="mt-4 grid gap-3">
-                            <button
-                                type="button"
-                                class="w-full rounded-full border border-[#30beef] px-4 py-3 font-black text-[#30beef] transition-all duration-300 hover:bg-[#30beef] hover:text-white hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                                :disabled="applyingCoupon"
-                                @click="aplicarCupon"
-                            >
-                                {{
-                                    applyingCoupon
-                                        ? 'Aplicando cupón...'
-                                        : 'Aplicar código'
-                                }}
-                            </button>
-
-                            <button
-                                v-if="cupon"
-                                type="button"
-                                class="w-full rounded-full border border-red-200 px-4 py-3 font-black text-red-500 transition-all duration-300 hover:bg-red-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                                :disabled="removingCoupon"
-                                @click="quitarCupon"
-                            >
-                                {{
-                                    removingCoupon
-                                        ? 'Quitando cupón...'
-                                        : 'Quitar cupón'
-                                }}
-                            </button>
-                        </div>
-
-                        <div
-                            v-if="cupon"
-                            class="mt-5 rounded-[24px] border border-emerald-200 bg-emerald-50 p-4"
-                        >
-                            <p
-                                class="text-xs font-black tracking-[0.18em] text-emerald-600 uppercase"
-                            >
-                                Cupón aplicado
-                            </p>
-                            <p class="mt-2 text-lg font-black text-neutral-900">
-                                {{ cupon.codigo }}
-                            </p>
-                            <p class="mt-1 text-sm text-neutral-600">
-                                {{ cupon.nombre }}
-                            </p>
-                            <p
-                                class="mt-2 text-sm font-semibold text-emerald-700"
-                            >
-                                Descuento:
-                                {{ formatearMoneda(cupon.descuento_aplicado) }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div
-                        class="rounded-[30px] border border-[#dfdfdf] bg-white p-6 shadow-[0_18px_60px_rgba(9,17,28,0.06)] transition-shadow duration-300 hover:shadow-[0_22px_70px_rgba(9,17,28,0.08)]"
-                    >
-                        <h3 class="text-xl font-black text-neutral-900">
-                            Resumen del pedido
-                        </h3>
-
-                        <div class="mt-6 space-y-4 text-sm">
-                            <div class="flex items-center justify-between">
-                                <span class="text-neutral-500">Productos</span>
-                                <span class="font-bold text-neutral-900">
-                                    {{ totalItems }}
-                                </span>
-                            </div>
-
-                            <div class="flex items-center justify-between">
-                                <span class="text-neutral-500">Subtotal</span>
-                                <span class="font-bold text-neutral-900">
-                                    {{ formatearMoneda(resumen.subtotal) }}
-                                </span>
-                            </div>
-
-                            <div
-                                v-if="(resumen.descuento_ofertas ?? 0) > 0"
-                                class="flex items-center justify-between"
-                            >
-                                <span class="text-neutral-500"
-                                    >Descuento por ofertas</span
-                                >
-                                <span class="font-bold text-emerald-600">
-                                    -{{
-                                        formatearMoneda(
-                                            resumen.descuento_ofertas ?? 0,
-                                        )
-                                    }}
-                                </span>
-                            </div>
-
-                            <div
-                                v-if="(resumen.descuento_cupon ?? 0) > 0"
-                                class="flex items-center justify-between"
-                            >
-                                <span class="text-neutral-500">Cupón</span>
-                                <span class="font-bold text-emerald-600">
-                                    -{{
-                                        formatearMoneda(
-                                            resumen.descuento_cupon ?? 0,
-                                        )
-                                    }}
-                                </span>
-                            </div>
-
-                            <div class="flex items-center justify-between">
-                                <span class="text-neutral-500">Envío</span>
-                                <span class="font-bold text-neutral-900">
-                                    {{ formatearMoneda(resumen.envio) }}
-                                </span>
-                            </div>
-
-                            <div class="flex items-center justify-between">
-                                <span class="text-neutral-500"
-                                    >Descuento total</span
-                                >
-                                <span class="font-bold text-neutral-900">
-                                    -{{ formatearMoneda(resumen.descuento) }}
-                                </span>
-                            </div>
-
-                            <div class="border-t border-[#ececec] pt-5">
+                            <div class="flex min-w-0 flex-1 flex-col gap-2">
                                 <div
-                                    class="flex items-end justify-between gap-3"
+                                    class="flex items-start justify-between gap-2"
                                 >
-                                    <span
-                                        class="text-lg font-black text-neutral-900"
+                                    <div class="min-w-0">
+                                        <Link
+                                            :href="urls.producto(item.slug)"
+                                            class="line-clamp-2 text-sm font-semibold hover:text-brand-green-strong sm:text-base"
+                                        >
+                                            {{ item.nombre }}
+                                        </Link>
+                                        <p
+                                            v-if="item.sku"
+                                            class="text-xs text-muted-foreground"
+                                        >
+                                            SKU {{ item.sku }}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="-mt-1 -mr-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                        :aria-label="`Quitar ${item.nombre} del carrito`"
+                                        :disabled="
+                                            actualizando === item.producto_id
+                                        "
+                                        @click="eliminar(item)"
                                     >
-                                        Total
-                                    </span>
+                                        <X class="size-4" aria-hidden="true" />
+                                    </button>
+                                </div>
+
+                                <div
+                                    class="flex flex-wrap items-baseline gap-x-2"
+                                >
+                                    <span class="font-bold tabular-nums">{{
+                                        moneda(item.precio)
+                                    }}</span>
                                     <span
-                                        class="text-3xl font-black tracking-tight text-neutral-900"
+                                        v-if="item.tiene_oferta"
+                                        class="text-xs text-muted-foreground tabular-nums line-through"
+                                        >{{
+                                            moneda(item.precio_original)
+                                        }}</span
                                     >
-                                        {{ formatearMoneda(resumen.total) }}
+                                    <span
+                                        v-if="item.tiene_oferta"
+                                        class="rounded-full bg-brand-green-soft px-2 py-0.5 text-[11px] font-semibold text-brand-green-strong"
+                                    >
+                                        <Tag
+                                            class="mr-0.5 inline size-3"
+                                            aria-hidden="true"
+                                        />{{ item.oferta?.nombre || 'Oferta' }}
                                     </span>
                                 </div>
+
+                                <p
+                                    v-if="etiquetaDisponibilidad(item)"
+                                    class="flex items-center gap-1 text-xs font-medium text-brand-teal-strong"
+                                >
+                                    <Clock3
+                                        v-if="
+                                            item.modalidad_venta ===
+                                            'bajo_pedido'
+                                        "
+                                        class="size-3.5"
+                                        aria-hidden="true"
+                                    />
+                                    {{ etiquetaDisponibilidad(item) }}
+                                </p>
+
+                                <p
+                                    v-if="item.error"
+                                    class="flex items-start gap-1.5 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs font-medium text-destructive"
+                                    role="alert"
+                                >
+                                    <AlertTriangle
+                                        class="mt-px size-3.5 shrink-0"
+                                        aria-hidden="true"
+                                    />
+                                    {{ item.error }}
+                                </p>
+
+                                <div
+                                    class="mt-auto flex flex-wrap items-center justify-between gap-2"
+                                >
+                                    <SelectorCantidad
+                                        v-if="item.cantidad_maxima > 0"
+                                        :model-value="item.cantidad"
+                                        :max="Math.max(item.cantidad_maxima, 1)"
+                                        :disabled="
+                                            actualizando === item.producto_id
+                                        "
+                                        :etiqueta="`Cantidad de ${item.nombre}`"
+                                        @update:model-value="
+                                            (v) => cambiarCantidad(item, v)
+                                        "
+                                    />
+                                    <Button
+                                        v-else
+                                        size="sm"
+                                        variant="outline"
+                                        class="rounded-full"
+                                        @click="eliminar(item)"
+                                    >
+                                        Quitar producto agotado
+                                    </Button>
+                                    <p class="text-right">
+                                        <span
+                                            class="block text-[11px] text-muted-foreground"
+                                            >Importe</span
+                                        >
+                                        <span
+                                            class="font-display text-lg font-bold tabular-nums"
+                                            >{{ moneda(item.subtotal) }}</span
+                                        >
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                            <Loader2
+                                v-if="actualizando === item.producto_id"
+                                class="absolute top-1/2 left-1/2 size-6 -translate-1/2 animate-spin text-brand-green-strong"
+                                aria-label="Actualizando"
+                            />
+                        </article>
 
                         <Link
-                            href="/checkout"
-                            class="mt-6 flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#7dd03c] to-[#30beef] px-4 py-3.5 font-black text-white transition-all duration-300 hover:-translate-y-0.5 hover:opacity-90 hover:shadow-md"
-                            :class="
-                                !items.length
-                                    ? 'pointer-events-none opacity-50'
-                                    : ''
-                            "
+                            :href="urls.catalogo"
+                            class="inline-flex items-center gap-1 pt-2 text-sm font-semibold text-brand-green-strong hover:underline"
                         >
-                            Proceder al pago
+                            ← Seguir comprando
                         </Link>
-
-                        <p
-                            class="mt-3 text-center text-xs leading-5 text-neutral-400"
-                        >
-                            El envío, impuestos o promociones se pueden ajustar
-                            en el checkout
-                        </p>
                     </div>
-                </aside>
+
+                    <!-- Resumen -->
+                    <aside class="space-y-4 lg:sticky lg:top-24">
+                        <div
+                            class="rounded-3xl border border-border bg-background p-5 shadow-sm"
+                        >
+                            <h2 class="mb-4 font-display text-xl font-bold">
+                                Resumen
+                            </h2>
+
+                            <!-- Cupón -->
+                            <div class="mb-5">
+                                <div
+                                    v-if="cupon"
+                                    class="flex items-center justify-between gap-2 rounded-xl border border-brand-green/40 bg-brand-green-soft px-3 py-2"
+                                >
+                                    <p class="text-sm">
+                                        <Tag
+                                            class="mr-1 inline size-4 text-brand-green-strong"
+                                            aria-hidden="true"
+                                        />
+                                        <span class="font-mono font-bold">{{
+                                            cupon.codigo
+                                        }}</span>
+                                        <span class="text-muted-foreground">
+                                            · ahorras
+                                            {{
+                                                moneda(cupon.descuento_aplicado)
+                                            }}</span
+                                        >
+                                    </p>
+                                    <button
+                                        type="button"
+                                        class="text-xs font-semibold text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+                                        @click="quitarCupon"
+                                    >
+                                        Quitar
+                                    </button>
+                                </div>
+                                <template v-else>
+                                    <form
+                                        class="flex gap-2"
+                                        novalidate
+                                        @submit.prevent="aplicarCupon"
+                                    >
+                                        <label for="cupon" class="sr-only"
+                                            >Código de cupón</label
+                                        >
+                                        <Input
+                                            id="cupon"
+                                            v-model="cuponForm.codigo"
+                                            placeholder="Código de cupón"
+                                            autocomplete="off"
+                                            class="h-10 rounded-full uppercase"
+                                            :aria-invalid="
+                                                !!cuponForm.errors.codigo
+                                            "
+                                            aria-describedby="cupon-error"
+                                        />
+                                        <Button
+                                            type="submit"
+                                            variant="outline"
+                                            class="h-10 rounded-full"
+                                            :disabled="
+                                                cuponForm.processing ||
+                                                !cuponForm.codigo.trim()
+                                            "
+                                        >
+                                            <Loader2
+                                                v-if="cuponForm.processing"
+                                                class="animate-spin"
+                                                aria-hidden="true"
+                                            />
+                                            Aplicar
+                                        </Button>
+                                    </form>
+                                    <p
+                                        v-if="cuponForm.errors.codigo"
+                                        id="cupon-error"
+                                        class="mt-1.5 text-xs font-medium text-destructive"
+                                        role="alert"
+                                    >
+                                        {{ cuponForm.errors.codigo }}
+                                    </p>
+                                </template>
+                                <p
+                                    v-if="cupon_error"
+                                    class="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive"
+                                    role="alert"
+                                >
+                                    {{ cupon_error }} Quita el cupón para
+                                    continuar.
+                                </p>
+                            </div>
+
+                            <ResumenTotales
+                                :subtotal="resumen.subtotal"
+                                :descuento-ofertas="resumen.descuento_ofertas"
+                                :descuento-cupon="resumen.descuento_cupon"
+                                :cupon-codigo="cupon?.codigo"
+                                :envio="resumen.envio"
+                                :envio-por-cotizar="true"
+                                texto-envio-pendiente="Se calcula en el checkout"
+                                :total="
+                                    resumen.subtotal - resumen.descuento_cupon
+                                "
+                                etiqueta-total="Total estimado"
+                            />
+
+                            <Button
+                                v-if="autenticado"
+                                as-child
+                                size="lg"
+                                class="mt-5 h-12 w-full rounded-full text-base font-bold"
+                                :class="
+                                    !puede_comprar
+                                        ? 'pointer-events-none opacity-50'
+                                        : ''
+                                "
+                            >
+                                <Link
+                                    :href="checkout.index.url()"
+                                    :aria-disabled="!puede_comprar"
+                                    :tabindex="puede_comprar ? 0 : -1"
+                                >
+                                    Continuar con la compra
+                                    <ArrowRight aria-hidden="true" />
+                                </Link>
+                            </Button>
+                            <template v-else>
+                                <Button
+                                    as-child
+                                    size="lg"
+                                    class="mt-5 h-12 w-full rounded-full text-base font-bold"
+                                >
+                                    <Link :href="urls.login">
+                                        <LockKeyhole aria-hidden="true" />
+                                        Inicia sesión para comprar
+                                    </Link>
+                                </Button>
+                                <p
+                                    class="mt-2 text-center text-xs text-muted-foreground"
+                                >
+                                    ¿Primera vez?
+                                    <Link
+                                        :href="urls.registro"
+                                        class="font-semibold text-brand-green-strong hover:underline"
+                                        >Crea tu cuenta</Link
+                                    >
+                                    — tu carrito se conserva.
+                                </p>
+                            </template>
+                            <p
+                                v-if="hayErrores"
+                                class="mt-2 text-center text-xs text-destructive"
+                            >
+                                Corrige los avisos marcados para continuar.
+                            </p>
+
+                            <p
+                                class="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground"
+                            >
+                                <ShieldCheck
+                                    class="size-4 text-brand-green-strong"
+                                    aria-hidden="true"
+                                />
+                                Pagas por transferencia o en efectivo
+                            </p>
+                        </div>
+
+                        <AvisoTarjetas />
+                    </aside>
+                </div>
             </div>
         </section>
     </PublicLayout>

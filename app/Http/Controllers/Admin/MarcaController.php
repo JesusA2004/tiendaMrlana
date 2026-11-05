@@ -3,13 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Catalogo\MarcaRequest;
 use App\Models\Marca;
+use App\Support\ImagenUrl;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,162 +19,124 @@ class MarcaController extends Controller
 {
     public function index(Request $request): Response
     {
-        $search = trim((string) $request->string('search'));
-        $status = (string) $request->input('status', 'all');
+        $filtros = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'estado' => ['nullable', Rule::in(['activas', 'inactivas'])],
+        ]);
+
+        $q = trim((string) ($filtros['q'] ?? ''));
 
         $marcas = Marca::query()
             ->withCount('productos')
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($subQuery) use ($search) {
-                    $subQuery
-                        ->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('slug', 'like', "%{$search}%");
-                });
-            })
-            ->when($status === 'active', fn ($query) => $query->where('activa', true))
-            ->when($status === 'inactive', fn ($query) => $query->where('activa', false))
-            ->latest('id')
-            ->paginate(12)
-            ->through(function (Marca $marca) {
-                return [
-                    'id' => $marca->id,
-                    'nombre' => $marca->nombre,
-                    'slug' => $marca->slug,
-                    'logo' => $marca->logo ? Storage::url($marca->logo) : null,
-                    'activa' => (bool) $marca->activa,
-                    'productos_count' => (int) $marca->productos_count,
-                    'created_at' => $marca->created_at?->toDateTimeString(),
-                ];
-            })
-            ->withQueryString();
+            ->when($q !== '', fn (Builder $query) => $query->where(fn (Builder $w) => $w
+                ->where('nombre', 'like', '%'.$q.'%')
+                ->orWhere('slug', 'like', '%'.$q.'%')))
+            ->when(($filtros['estado'] ?? null) === 'activas', fn (Builder $query) => $query->where('activa', true))
+            ->when(($filtros['estado'] ?? null) === 'inactivas', fn (Builder $query) => $query->where('activa', false))
+            ->orderBy('nombre')
+            ->paginate(24)
+            ->withQueryString()
+            ->through(fn (Marca $m) => [
+                'id' => $m->id,
+                'nombre' => $m->nombre,
+                'slug' => $m->slug,
+                'logo' => ImagenUrl::resolver($m->logo),
+                'activa' => (bool) $m->activa,
+                'productos_count' => (int) $m->productos_count,
+            ]);
 
         return Inertia::render('Admin/Marcas/Index', [
             'marcas' => $marcas,
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-            ],
-            'endpoints' => [
-                'index' => route('admin.marcas.index'),
-                'store' => route('admin.marcas.store'),
-                'updateBase' => url('/admin/marcas'),
-                'destroyBase' => url('/admin/marcas'),
-            ],
+            'filtros' => ['q' => $q, 'estado' => $filtros['estado'] ?? ''],
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(MarcaRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'nombre' => ['required', 'string', 'max:120', 'unique:marcas,nombre'],
-            'slug' => ['nullable', 'string', 'max:140', 'unique:marcas,slug'],
-            'logo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
-            'activa' => ['nullable', 'boolean'],
-        ]);
-
-        $marca = new Marca();
-        $marca->nombre = $data['nombre'];
-        $marca->slug = $this->resolveSlug($data['slug'] ?? null, $data['nombre']);
-        $marca->activa = $request->boolean('activa', true);
-
-        if ($request->hasFile('logo_file')) {
-            $marca->logo = $request->file('logo_file')->store('marcas', 'public');
-        }
-
+        $marca = new Marca;
+        $this->llenar($marca, $request->validated(), $request);
         $marca->save();
 
-        return back()->with('success', 'Marca creada correctamente.');
+        return back()->with('success', 'Marca «'.$marca->nombre.'» creada.');
     }
 
-    public function update(Request $request, Marca $marca): RedirectResponse
+    public function show(Marca $marca): RedirectResponse
     {
-        $data = $request->validate([
-            'nombre' => [
-                'required',
-                'string',
-                'max:120',
-                Rule::unique('marcas', 'nombre')->ignore($marca->id),
-            ],
-            'slug' => [
-                'nullable',
-                'string',
-                'max:140',
-                Rule::unique('marcas', 'slug')->ignore($marca->id),
-            ],
-            'logo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
-            'remove_logo' => ['nullable', 'boolean'],
-            'activa' => ['nullable', 'boolean'],
-        ]);
+        return redirect()->route('admin.marcas.index', ['q' => $marca->nombre]);
+    }
 
-        $removeLogo = $request->boolean('remove_logo');
-        $hasNewLogo = $request->hasFile('logo_file');
-
-        $marca->nombre = $data['nombre'];
-        $marca->slug = $this->resolveSlug(
-            $data['slug'] ?? null,
-            $data['nombre'],
-            $marca->id
-        );
-        $marca->activa = $request->boolean('activa', true);
-
-        if ($removeLogo && $marca->logo) {
-            if (Storage::disk('public')->exists($marca->logo)) {
-                Storage::disk('public')->delete($marca->logo);
-            }
-            $marca->logo = null;
-        }
-
-        if ($hasNewLogo) {
-            if ($marca->logo && Storage::disk('public')->exists($marca->logo)) {
-                Storage::disk('public')->delete($marca->logo);
-            }
-
-            $marca->logo = $request->file('logo_file')->store('marcas', 'public');
-        }
-
+    public function update(MarcaRequest $request, Marca $marca): RedirectResponse
+    {
+        $this->llenar($marca, $request->validated(), $request);
         $marca->save();
 
-        return back()->with('success', 'Marca actualizada correctamente.');
+        return back()->with('success', 'Marca «'.$marca->nombre.'» actualizada.');
+    }
+
+    public function estado(Marca $marca): RedirectResponse
+    {
+        $marca->forceFill(['activa' => ! $marca->activa])->save();
+
+        return back()->with('success', 'Marca «'.$marca->nombre.'» '.($marca->activa ? 'activada' : 'desactivada').'.');
     }
 
     public function destroy(Marca $marca): RedirectResponse
     {
-        if ($marca->productos()->exists()) {
-            throw ValidationException::withMessages([
-                'general' => 'No puedes eliminar una marca que ya está asignada a productos.',
-            ]);
+        $productos = $marca->productos()->count();
+
+        if ($productos > 0) {
+            return back()->with('error', "«{$marca->nombre}» tiene {$productos} producto(s) asociados. Desactívala en lugar de eliminarla.");
         }
 
-        if ($marca->logo && Storage::disk('public')->exists($marca->logo)) {
-            Storage::disk('public')->delete($marca->logo);
-        }
-
+        $this->borrarLogo($marca->logo);
         $marca->delete();
 
-        return back()->with('success', 'Marca eliminada correctamente.');
+        return back()->with('success', 'Marca eliminada.');
     }
 
-    private function resolveSlug(?string $slug, string $nombre, ?int $ignoreId = null): string
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    private function llenar(Marca $marca, array $datos, Request $request): void
     {
-        $base = Str::slug($slug ?: $nombre);
+        $marca->forceFill([
+            'nombre' => $datos['nombre'],
+            'slug' => $this->slugUnico($datos['slug'] ?? null, $datos['nombre'], $marca->id, $marca->slug),
+            'activa' => (bool) ($datos['activa'] ?? true),
+        ]);
 
-        if ($base === '') {
-            $base = 'marca';
+        if (($datos['quitar_logo'] ?? false) && $marca->logo) {
+            $this->borrarLogo($marca->logo);
+            $marca->logo = null;
         }
 
-        $candidate = $base;
-        $counter = 2;
+        if ($request->hasFile('logo')) {
+            $this->borrarLogo($marca->logo);
+            $marca->logo = $request->file('logo')->store('marcas', 'public');
+        }
+    }
 
-        while (
-            Marca::query()
-                ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
-                ->where('slug', $candidate)
-                ->exists()
-        ) {
-            $candidate = "{$base}-{$counter}";
-            $counter++;
+    private function slugUnico(?string $slug, string $nombre, ?int $ignorar, ?string $actual): string
+    {
+        if (! $slug && $actual) {
+            return $actual;
         }
 
-        return $candidate;
+        $base = Str::limit(Str::slug($slug ?: $nombre) ?: 'marca', 160, '');
+        $candidato = $base;
+        $n = 2;
+
+        while (Marca::query()->when($ignorar, fn (Builder $q) => $q->whereKeyNot($ignorar))->where('slug', $candidato)->exists()) {
+            $candidato = $base.'-'.$n++;
+        }
+
+        return $candidato;
+    }
+
+    private function borrarLogo(?string $ruta): void
+    {
+        if ($ruta && ! Str::startsWith($ruta, ['http://', 'https://']) && Storage::disk('public')->exists($ruta)) {
+            Storage::disk('public')->delete($ruta);
+        }
     }
 }

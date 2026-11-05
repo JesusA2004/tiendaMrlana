@@ -2,36 +2,26 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
+/**
+ * Seeders seguros para PRODUCCIÓN (idempotentes, sin usuarios ni contraseñas).
+ * El administrador se crea con: php artisan tienda:crear-admin
+ * Datos de demostración (sólo local): php artisan db:seed --class=ProductoSeeder
+ */
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
-            ['email' => 'admin@mr-lana.com'],
-            [
-                'name' => 'Admin Mr. Lana',
-                'password' => Hash::make('password'),
-                'rol' => User::ROL_ADMIN,
-                'email_verified_at' => now(),
-            ],
-        );
+        $this->call(MetodosPagoSeeder::class);
 
-        User::updateOrCreate(
-            ['email' => 'vendedor@mr-lana.com'],
-            [
-                'name' => 'Vendedor Mr. Lana',
-                'password' => Hash::make('password'),
-                'rol' => User::ROL_VENDEDOR,
-                'email_verified_at' => now(),
-            ],
-        );
+        // Importación del catálogo de muebles (la implementa el equipo de catálogo).
+        if (class_exists(CatalogoMueblesSeeder::class)) {
+            $this->call(CatalogoMueblesSeeder::class);
+        }
 
-        $this->call([
-            ProductoSeeder::class,
-        ]);
+        if (app()->environment('local')) {
+            $this->command?->info('Entorno local: para datos de demostración ejecuta `php artisan db:seed --class=ProductoSeeder`.');
+        }
     }
 }

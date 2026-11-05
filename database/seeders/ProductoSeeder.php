@@ -7,10 +7,20 @@ use App\Models\Producto;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
+/**
+ * Productos de demostración (sólo APP_ENV=local).
+ */
 class ProductoSeeder extends Seeder
 {
     public function run(): void
     {
+        // Datos de DEMOSTRACIÓN: nunca en producción ni desde DatabaseSeeder.
+        if (! app()->environment('local')) {
+            $this->command?->warn('ProductoSeeder sólo se ejecuta en entorno local.');
+
+            return;
+        }
+
         $categoria = Categoria::firstOrCreate(
             ['slug' => 'sartenes'],
             [
@@ -71,6 +81,8 @@ class ProductoSeeder extends Seeder
                     'destacado' => $item['destacado'],
                     'visible' => true,
                     'activo' => true,
+                    'estado_publicacion' => 'publicado',
+                    'modalidad_venta' => 'inventario',
                 ]
             );
         }

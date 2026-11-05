@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,6 +50,12 @@ class ProfileController extends Controller
     public function destroy(ProfileDeleteRequest $request): RedirectResponse
     {
         $user = $request->user();
+
+        if ($user->isAdmin() && User::query()->where('rol', User::ROL_ADMIN)->count() <= 1) {
+            return back()->withErrors([
+                'password' => 'No puedes eliminar la única cuenta de administrador. Asigna otro administrador primero.',
+            ]);
+        }
 
         Auth::logout();
 

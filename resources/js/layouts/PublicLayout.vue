@@ -1,87 +1,65 @@
 <script setup lang="ts">
-import { Head, usePage } from '@inertiajs/vue3'
-import Swal from 'sweetalert2'
-import { computed, onMounted } from 'vue'
-import StoreFooter from '@/components/public/StoreFooter.vue'
-import StoreNavbar from '@/components/public/StoreNavbar.vue'
-import WhaticketWidget from '@/components/integrations/WhaticketWidget.vue'
+import { usePage } from '@inertiajs/vue3';
+import { watch } from 'vue';
+import { toast, Toaster } from 'vue-sonner';
+import 'vue-sonner/style.css';
+import WhaticketWidget from '@/components/integrations/WhaticketWidget.vue';
+import InstallPrompt from '@/components/public/InstallPrompt.vue';
+import SeoHead from '@/components/public/SeoHead.vue';
+import StoreFooter from '@/components/public/StoreFooter.vue';
+import StoreNavbar from '@/components/public/StoreNavbar.vue';
+import type { PropsCompartidasTienda } from '@/components/public/types';
 
-interface AuthUser {
-  id: number
-  name: string
-  rol?: string
-}
+/**
+ * Layout de la tienda pública (también lo usan carrito/checkout de otros equipos).
+ * Muestra los mensajes flash de sesión (success|error) como avisos no intrusivos y
+ * mantiene las metaetiquetas SEO/Open Graph de la prop `seo` (SeoHead).
+ */
+const page = usePage<PropsCompartidasTienda>();
 
-interface SharedPageProps extends Record<string, unknown> {
-  carrito?: {
-    cantidad_items?: number
-  }
-  flash?: {
-    success?: string | null
-    error?: string | null
-  }
-  auth?: {
-    user?: AuthUser | null
-  }
-}
+watch(
+    () => page.props.flash,
+    (flash) => {
+        if (flash?.success) {
+            toast.success(String(flash.success));
+        }
 
-const page = usePage<SharedPageProps>()
-
-const carritoCantidad = computed(() => Number(page.props.carrito?.cantidad_items ?? 0))
-const authUser = computed<AuthUser | null>(() => page.props.auth?.user ?? null)
-const flashSuccess = computed(() => page.props.flash?.success ?? null)
-const flashError = computed(() => page.props.flash?.error ?? null)
-
-onMounted(() => {
-  if (flashSuccess.value) {
-    Swal.fire({
-      icon: 'success',
-      title: '¡Todo salió bien!',
-      text: String(flashSuccess.value),
-      confirmButtonColor: '#7dd03c',
-      background: '#ffffff',
-      color: '#111827',
-      customClass: {
-        popup: 'rounded-[22px] shadow-xl',
-        confirmButton: 'rounded-xl font-semibold',
-      },
-    })
-    return
-  }
-
-  if (flashError.value) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Ups, hubo un problema',
-      text: String(flashError.value),
-      confirmButtonColor: '#30beef',
-      background: '#ffffff',
-      color: '#111827',
-      customClass: {
-        popup: 'rounded-[22px] shadow-xl',
-        confirmButton: 'rounded-xl font-semibold',
-      },
-    })
-  }
-})
+        if (flash?.error) {
+            toast.error(String(flash.error));
+        }
+    },
+    { immediate: true },
+);
 </script>
 
 <template>
-  <div class="min-h-screen bg-white text-[var(--brand-text)]">
-    <Head title="Mr. Lana" />
+    <SeoHead />
 
-    <!-- SOLO el widget real -->
-    <WhaticketWidget />
+    <div class="flex min-h-svh flex-col bg-background text-foreground">
+        <WhaticketWidget />
 
-    <StoreNavbar
-      :carrito-cantidad="carritoCantidad"
-      :auth-user="authUser"
-    />
+        <StoreNavbar />
 
-    <main class="w-full">
-      <slot />
-    </main>
+        <main
+            id="contenido"
+            class="w-full flex-1 focus:outline-none"
+            tabindex="-1"
+        >
+            <slot />
+        </main>
 
-    <StoreFooter />
-  </div>
+        <StoreFooter />
+
+        <InstallPrompt />
+
+        <Toaster
+            position="top-center"
+            rich-colors
+            close-button
+            :offset="84"
+            :toast-options="{
+                class: 'font-sans rounded-2xl',
+            }"
+        />
+    </div>
 </template>

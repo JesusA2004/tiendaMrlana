@@ -1,97 +1,270 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { useCurrency } from '@/composables/useCurrency';
+import { ArrowRight, ChevronRight, ImageOff, Package } from 'lucide-vue-next';
+import CuentaNav from '@/components/compra/CuentaNav.vue';
+import EstadoChip from '@/components/compra/EstadoChip.vue';
+import { fechaLarga, moneda } from '@/components/compra/formato';
+import type { EstadoInfo } from '@/components/compra/types';
+import { urls } from '@/components/public/tienda';
+import { Button } from '@/components/ui/button';
+import PublicLayout from '@/layouts/PublicLayout.vue';
+import pedidosRutas from '@/routes/cliente/pedidos';
 
-interface Pedido {
+defineOptions({ layout: PublicLayout });
+
+interface PedidoListado {
     id: number;
     folio: string;
-    estatus: string;
-    total: number | string;
-    created_at: string;
-    items: Array<{ id: number; nombre: string; cantidad: number }>;
+    created_at: string | null;
+    total: number;
+    envio_por_cotizar: boolean;
+    envio_esperando_eleccion: boolean;
+    metodo_pago_label: string;
+    estatus: EstadoInfo;
+    estado_pago: EstadoInfo;
+    estado_logistico: EstadoInfo;
+    items_count: number;
+    piezas: number;
+    imagenes: string[];
+    primer_producto: string | null;
+    requiere_accion: boolean;
+}
+
+interface EnlacePaginacion {
+    url: string | null;
+    label: string;
+    active: boolean;
 }
 
 defineProps<{
-    pedidos: { data: Pedido[] };
+    pedidos: {
+        data: PedidoListado[];
+        links: EnlacePaginacion[];
+        total: number;
+        current_page: number;
+        last_page: number;
+    };
+    filtro: string | null;
+    conteos: Record<string, number>;
 }>();
 
-const { formatCurrency } = useCurrency();
+const filtros = [
+    { clave: null, texto: 'Todos', conteo: 'todos' },
+    { clave: 'por_pagar', texto: 'Por pagar', conteo: 'por_pagar' },
+    { clave: 'en_proceso', texto: 'En proceso', conteo: 'en_proceso' },
+    { clave: 'entregados', texto: 'Entregados', conteo: 'entregados' },
+    { clave: 'cerrados', texto: 'Cancelados y vencidos', conteo: 'cerrados' },
+] as const;
 
-function formatDate(value?: string | null) {
-    if (!value) return 'Sin fecha';
-    return new Date(value).toLocaleDateString('es-MX');
+function etiquetaPagina(label: string): string {
+    return label
+        .replace('&laquo; Previous', '‹ Anterior')
+        .replace('Next &raquo;', 'Siguiente ›')
+        .replace('&laquo;', '‹')
+        .replace('&raquo;', '›');
 }
 </script>
 
 <template>
     <Head title="Mis pedidos" />
 
-    <div class="space-y-6 p-4 sm:p-6 lg:p-8">
-        <header
-            class="rounded-3xl border border-[var(--brand-gray)]/60 bg-gradient-to-r from-white to-[var(--brand-soft)] p-4 shadow-sm sm:p-6"
+    <CuentaNav
+        activo="pedidos"
+        titulo="Mis pedidos"
+        descripcion="Consulta el estado de tus compras, paga y descarga su resumen."
+    />
+
+    <div class="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+        <nav
+            class="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+            aria-label="Filtrar pedidos"
         >
-            <h1 class="text-2xl font-black">Mis pedidos</h1>
-            <p class="text-sm text-neutral-500">
-                Historial y seguimiento de tus compras.
-            </p>
-        </header>
-
-        <div v-if="pedidos.data.length" class="grid gap-4 lg:grid-cols-2">
-            <article
-                v-for="pedido in pedidos.data"
-                :key="pedido.id"
-                class="rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            <Link
+                v-for="f in filtros"
+                :key="f.texto"
+                :href="
+                    pedidosRutas.index.url(
+                        f.clave ? { query: { estado: f.clave } } : undefined,
+                    )
+                "
+                preserve-scroll
+                class="flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition"
+                :class="
+                    filtro === f.clave
+                        ? 'border-brand-green bg-brand-green text-brand-ink'
+                        : 'border-border bg-background hover:border-brand-green'
+                "
+                :aria-current="filtro === f.clave ? 'true' : undefined"
             >
-                <div class="flex items-center justify-between gap-3">
-                    <p class="font-black">{{ pedido.folio }}</p>
-                    <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-bold uppercase">
-                        {{ pedido.estatus }}
-                    </span>
-                </div>
-
-                <p class="mt-2 text-sm text-neutral-500">
-                    {{ formatDate(pedido.created_at) }}
-                </p>
-
-                <p class="mt-3 text-lg font-black">
-                    {{ formatCurrency(pedido.total) }}
-                </p>
-
-                <div class="mt-4 rounded-2xl bg-neutral-50 p-4">
-                    <p class="text-xs uppercase text-neutral-500">Productos</p>
-                    <ul class="mt-2 space-y-1 text-sm text-neutral-700">
-                        <li
-                            v-for="item in pedido.items.slice(0, 3)"
-                            :key="item.id"
-                        >
-                            {{ item.nombre }} × {{ item.cantidad }}
-                        </li>
-                    </ul>
-                    <p
-                        v-if="pedido.items.length > 3"
-                        class="mt-2 text-xs text-neutral-500"
-                    >
-                        y {{ pedido.items.length - 3 }} más...
-                    </p>
-                </div>
-
-                <Link
-                    :href="`/mi-cuenta/pedidos/${pedido.id}`"
-                    class="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-90"
+                {{ f.texto }}
+                <span
+                    class="rounded-full px-1.5 text-xs"
+                    :class="filtro === f.clave ? 'bg-white/60' : 'bg-muted'"
+                    >{{ conteos[f.conteo] ?? 0 }}</span
                 >
-                    Ver detalle
-                </Link>
-            </article>
-        </div>
+            </Link>
+        </nav>
 
         <div
-            v-else
-            class="rounded-2xl border border-dashed bg-white px-6 py-16 text-center shadow-sm"
+            v-if="!pedidos.data.length"
+            class="flex flex-col items-center rounded-3xl border border-dashed border-border bg-background px-6 py-14 text-center"
         >
-            <h2 class="text-xl font-black">Todavía no tienes pedidos</h2>
-            <p class="mt-2 text-sm text-neutral-500">
-                Cuando realices compras, aquí aparecerá tu historial.
+            <span
+                class="mb-4 flex size-14 items-center justify-center rounded-full bg-brand-green-soft text-brand-green-strong"
+            >
+                <Package class="size-7" aria-hidden="true" />
+            </span>
+            <h2 class="font-display text-xl font-bold">
+                {{
+                    filtro
+                        ? 'No hay pedidos con este filtro'
+                        : 'Aún no tienes pedidos'
+                }}
+            </h2>
+            <p class="mt-1 max-w-sm text-sm text-muted-foreground">
+                Cuando compres, aquí podrás seguir tu pedido paso a paso.
             </p>
+            <Button as-child class="mt-5 rounded-full">
+                <Link :href="urls.catalogo">
+                    Ir a la tienda
+                    <ArrowRight aria-hidden="true" />
+                </Link>
+            </Button>
         </div>
+
+        <ul v-else class="space-y-3">
+            <li v-for="p in pedidos.data" :key="p.id">
+                <Link
+                    :href="pedidosRutas.show.url(p.id)"
+                    class="group flex flex-col gap-4 rounded-3xl border bg-background p-4 shadow-xs transition hover:border-brand-green hover:shadow-md sm:flex-row sm:items-center sm:p-5"
+                    :class="
+                        p.requiere_accion
+                            ? 'border-warning/50'
+                            : 'border-border'
+                    "
+                >
+                    <div class="flex shrink-0 -space-x-3">
+                        <span
+                            v-for="(img, i) in p.imagenes"
+                            :key="i"
+                            class="size-14 overflow-hidden rounded-2xl bg-surface ring-2 ring-background"
+                        >
+                            <img
+                                :src="img"
+                                alt=""
+                                class="size-full object-cover"
+                                loading="lazy"
+                            />
+                        </span>
+                        <span
+                            v-if="!p.imagenes.length"
+                            class="flex size-14 items-center justify-center rounded-2xl bg-surface text-muted-foreground"
+                        >
+                            <ImageOff class="size-5" aria-hidden="true" />
+                        </span>
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                        <div
+                            class="flex flex-wrap items-center gap-x-3 gap-y-1"
+                        >
+                            <p
+                                class="font-display text-lg font-bold tracking-wide"
+                            >
+                                {{ p.folio }}
+                            </p>
+                            <p class="text-xs text-muted-foreground">
+                                {{ fechaLarga(p.created_at) }}
+                            </p>
+                        </div>
+                        <p class="truncate text-sm text-muted-foreground">
+                            {{ p.primer_producto }}
+                            <template v-if="p.items_count > 1">
+                                y {{ p.items_count - 1 }} producto{{
+                                    p.items_count - 1 === 1 ? '' : 's'
+                                }}
+                                más</template
+                            >
+                            · {{ p.metodo_pago_label }}
+                        </p>
+                        <div class="mt-2 flex flex-wrap gap-1.5">
+                            <EstadoChip
+                                :estado="p.estado_pago"
+                                prefijo="Pago:"
+                            />
+                            <EstadoChip
+                                :estado="p.estado_logistico"
+                                prefijo="Entrega:"
+                            />
+                        </div>
+                        <p
+                            v-if="p.requiere_accion"
+                            class="mt-2 text-xs font-semibold text-warning"
+                        >
+                            {{
+                                p.envio_esperando_eleccion
+                                    ? 'Pendiente: elige tu opción de envío.'
+                                    : 'Pendiente: realiza tu pago y sube el comprobante.'
+                            }}
+                        </p>
+                    </div>
+
+                    <div
+                        class="flex items-center justify-between gap-3 sm:flex-col sm:items-end"
+                    >
+                        <p
+                            class="font-display text-xl font-extrabold tabular-nums"
+                        >
+                            {{ moneda(p.total) }}
+                            <span
+                                v-if="p.envio_por_cotizar"
+                                class="block text-right text-[11px] font-medium text-warning"
+                                >{{
+                                    p.envio_esperando_eleccion
+                                        ? 'Elige tu envío'
+                                        : '+ envío por cotizar'
+                                }}</span
+                            >
+                        </p>
+                        <span
+                            class="inline-flex items-center gap-1 text-sm font-semibold text-brand-green-strong"
+                        >
+                            Ver detalle
+                            <ChevronRight
+                                class="size-4 transition group-hover:translate-x-0.5"
+                                aria-hidden="true"
+                            />
+                        </span>
+                    </div>
+                </Link>
+            </li>
+        </ul>
+
+        <nav
+            v-if="pedidos.last_page > 1"
+            class="mt-6 flex flex-wrap justify-center gap-1"
+            aria-label="Paginación"
+        >
+            <template v-for="(l, i) in pedidos.links" :key="i">
+                <Link
+                    v-if="l.url"
+                    :href="l.url"
+                    preserve-scroll
+                    class="min-w-9 rounded-full border px-3 py-1.5 text-center text-sm"
+                    :class="
+                        l.active
+                            ? 'border-brand-green bg-brand-green font-bold text-brand-ink'
+                            : 'border-border hover:border-brand-green'
+                    "
+                    :aria-current="l.active ? 'page' : undefined"
+                    >{{ etiquetaPagina(l.label) }}</Link
+                >
+                <span
+                    v-else
+                    class="min-w-9 px-3 py-1.5 text-center text-sm text-muted-foreground"
+                    >{{ etiquetaPagina(l.label) }}</span
+                >
+            </template>
+        </nav>
     </div>
 </template>

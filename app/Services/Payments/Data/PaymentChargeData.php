@@ -2,8 +2,8 @@
 
 namespace App\Services\Payments\Data;
 
-class PaymentChargeData {
-
+class PaymentChargeData
+{
     public function __construct(
         public readonly string $tokenId,
         public readonly string $deviceSessionId,
@@ -13,7 +13,6 @@ class PaymentChargeData {
         public readonly string $customerName,
         public readonly string $customerEmail,
         public readonly ?string $customerPhone = null,
-    ) {
-    }
+    ) {}
 
 }

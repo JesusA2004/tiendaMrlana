@@ -130,23 +130,24 @@
                             </table>
                         </div>
 
-                        @if($pedido->direccion)
+                        @php($dirEntrega = $pedido->direccionEntrega())
+                        @if($dirEntrega)
                             <div style="margin-top:24px; padding:20px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:18px;">
                                 <p style="margin:0; color:#111827; font-size:17px; font-weight:900;">
                                     Dirección
                                 </p>
 
                                 <p style="margin:10px 0 0; color:#374151; font-size:14px; line-height:1.8;">
-                                    <strong>{{ $pedido->direccion->nombre_receptor }}</strong><br>
-                                    {{ $pedido->direccion->calle }} {{ $pedido->direccion->numero_exterior }}
-                                    @if($pedido->direccion->numero_interior)
-                                        Int. {{ $pedido->direccion->numero_interior }}
+                                    <strong>{{ $dirEntrega['nombre_receptor'] ?? '' }}</strong><br>
+                                    {{ $dirEntrega['calle'] ?? '' }} {{ $dirEntrega['numero_exterior'] ?? '' }}
+                                    @if(! empty($dirEntrega['numero_interior']))
+                                        Int. {{ $dirEntrega['numero_interior'] }}
                                     @endif
                                     <br>
-                                    {{ $pedido->direccion->colonia }},
-                                    {{ $pedido->direccion->municipio }},
-                                    {{ $pedido->direccion->estado }}<br>
-                                    CP {{ $pedido->direccion->codigo_postal }}
+                                    {{ $dirEntrega['colonia'] ?? '' }},
+                                    {{ $dirEntrega['municipio'] ?? '' }},
+                                    {{ $dirEntrega['estado'] ?? '' }}<br>
+                                    CP {{ $dirEntrega['codigo_postal'] ?? '' }}
                                 </p>
                             </div>
                         @endif

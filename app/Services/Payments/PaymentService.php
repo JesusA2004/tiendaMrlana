@@ -2,25 +2,32 @@
 
 namespace App\Services\Payments;
 
+use App\Mail\PedidoEstadoMail;
 use App\Models\Pago;
 use App\Models\Pedido;
 use App\Models\PedidoEstatusHistorial;
 use App\Models\TransaccionPasarela;
 use App\Services\Payments\Data\PaymentChargeData;
 use App\Services\Payments\Data\PaymentResultData;
+use App\Services\Payments\Exceptions\OnlinePaymentsDisabledException;
 use Illuminate\Support\Facades\DB;
-use App\Mail\PedidoEstadoMail;
 use Illuminate\Support\Facades\Mail;
 
-class PaymentService {
-
+class PaymentService
+{
     public function __construct(
         private readonly PaymentGatewayManager $gatewayManager,
-    ) {
-    }
+    ) {}
 
+    /**
+     * @throws OnlinePaymentsDisabledException mientras config('payments.enabled') sea false
+     */
     public function charge(Pedido $pedido, Pago $pago, PaymentChargeData $data): PaymentResultData
     {
+        if (! config('payments.enabled', false)) {
+            throw new OnlinePaymentsDisabledException;
+        }
+
         $gateway = $this->gatewayManager->gateway();
 
         $pago->update([
@@ -90,5 +97,4 @@ class PaymentService {
 
         return $result;
     }
-
 }

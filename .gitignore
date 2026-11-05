@@ -26,3 +26,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Documentos fuente (pesados / con material de terceros): no versionar
+/docs/**/*.pdf

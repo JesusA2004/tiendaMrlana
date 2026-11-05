@@ -4,14 +4,16 @@ namespace App\Http\Controllers\Cliente;
 
 use App\Http\Controllers\Controller;
 use App\Models\Direccion;
+use App\Models\Pedido;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class DireccionController extends Controller {
-
-    public function index(Request $request): Response {
+class DireccionController extends Controller
+{
+    public function index(Request $request): Response
+    {
         $direcciones = Direccion::query()
             ->where('user_id', $request->user()->id)
             ->orderByDesc('predeterminada')
@@ -37,28 +39,27 @@ class DireccionController extends Controller {
                 ];
             })
             ->values();
+
         return Inertia::render('Cliente/Direcciones/Index', [
             'direcciones' => $direcciones,
-            'endpoints' => [
-                'store' => route('cliente.direcciones.store'),
-                'updateBase' => url('/mi-cuenta/direcciones'),
-                'destroyBase' => url('/mi-cuenta/direcciones'),
-            ],
         ]);
     }
 
-    public function store(Request $request): RedirectResponse {
+    public function store(Request $request): RedirectResponse
+    {
         $data = $this->validateData($request);
         if ($request->boolean('predeterminada')) {
             Direccion::query()
                 ->where('user_id', $request->user()->id)
                 ->update(['predeterminada' => false]);
         }
+        $primera = ! Direccion::query()->where('user_id', $request->user()->id)->exists();
         Direccion::create([
             ...$data,
             'user_id' => $request->user()->id,
-            'predeterminada' => $request->boolean('predeterminada'),
+            'predeterminada' => $primera || $request->boolean('predeterminada'),
         ]);
+
         return back()->with('success', 'Dirección guardada correctamente.');
     }
 
@@ -76,17 +77,25 @@ class DireccionController extends Controller {
             ...$data,
             'predeterminada' => $request->boolean('predeterminada'),
         ]);
+
         return back()->with('success', 'Dirección actualizada correctamente.');
     }
 
     public function destroy(Request $request, Direccion $direccion): RedirectResponse
     {
         abort_unless((int) $direccion->user_id === (int) $request->user()->id, 404);
+        // Los pedidos guardan una copia de la dirección (`direccion_envio`): editarla o borrarla no
+        // altera pedidos pasados. Sólo se bloquea si algún pedido viejo aún no tiene copia.
+        if (Pedido::query()->where('direccion_id', $direccion->id)->whereNull('direccion_envio')->exists()) {
+            return back()->with('error', 'Esta dirección ya se usó en un pedido y no se puede eliminar. Puedes agregar una nueva y marcarla como principal.');
+        }
         $direccion->delete();
+
         return back()->with('success', 'Dirección eliminada correctamente.');
     }
 
-    private function validateData(Request $request): array {
+    private function validateData(Request $request): array
+    {
         return $request->validate([
             'alias' => ['required', 'string', 'max:100'],
             'nombre_receptor' => ['required', 'string', 'max:180'],
@@ -103,5 +112,4 @@ class DireccionController extends Controller {
             'predeterminada' => ['nullable', 'boolean'],
         ]);
     }
-
 }

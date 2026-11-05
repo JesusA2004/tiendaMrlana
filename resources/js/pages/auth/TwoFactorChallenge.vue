@@ -15,18 +15,18 @@ import type { TwoFactorConfigContent } from '@/types';
 const authConfigContent = computed<TwoFactorConfigContent>(() => {
     if (showRecoveryInput.value) {
         return {
-            title: 'Recovery code',
+            title: 'Código de recuperación',
             description:
-                'Please confirm access to your account by entering one of your emergency recovery codes.',
-            buttonText: 'login using an authentication code',
+                'Confirma el acceso a tu cuenta con uno de tus códigos de recuperación de emergencia.',
+            buttonText: 'usar un código de autenticación',
         };
     }
 
     return {
-        title: 'Authentication code',
+        title: 'Código de autenticación',
         description:
-            'Enter the authentication code provided by your authenticator application.',
-        buttonText: 'login using a recovery code',
+            'Escribe el código de 6 dígitos que muestra tu aplicación de autenticación.',
+        buttonText: 'usar un código de recuperación',
     };
 });
 
@@ -49,13 +49,13 @@ const code = ref<string>('');
 </script>
 
 <template>
-    <Head title="Two-factor authentication" />
+    <Head title="Autenticación en dos pasos" />
 
     <div class="space-y-6">
         <template v-if="!showRecoveryInput">
             <Form
                 v-bind="store.form()"
-                class="space-y-4"
+                class="space-y-5"
                 reset-on-error
                 @error="code = ''"
                 #default="{ errors, processing, clearErrors }"
@@ -83,14 +83,17 @@ const code = ref<string>('');
                     </div>
                     <InputError :message="errors.code" />
                 </div>
-                <Button type="submit" class="w-full" :disabled="processing"
-                    >Continue</Button
+                <Button
+                    type="submit"
+                    class="h-11 w-full rounded-full text-[15px] font-semibold"
+                    :disabled="processing"
+                    >Continuar</Button
                 >
                 <div class="text-center text-sm text-muted-foreground">
-                    <span>or you can </span>
+                    <span>o puedes </span>
                     <button
                         type="button"
-                        class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                        class="rounded-sm font-medium text-brand-green-strong underline decoration-brand-green/40 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                         @click="() => toggleRecoveryMode(clearErrors)"
                     >
                         {{ authConfigContent.buttonText }}
@@ -102,27 +105,32 @@ const code = ref<string>('');
         <template v-else>
             <Form
                 v-bind="store.form()"
-                class="space-y-4"
+                class="space-y-5"
                 reset-on-error
                 #default="{ errors, processing, clearErrors }"
             >
                 <Input
                     name="recovery_code"
                     type="text"
-                    placeholder="Enter recovery code"
+                    placeholder="Escribe un código de recuperación"
+                    aria-label="Código de recuperación"
+                    class="h-11 rounded-xl"
                     :autofocus="showRecoveryInput"
                     required
                 />
                 <InputError :message="errors.recovery_code" />
-                <Button type="submit" class="w-full" :disabled="processing"
-                    >Continue</Button
+                <Button
+                    type="submit"
+                    class="h-11 w-full rounded-full text-[15px] font-semibold"
+                    :disabled="processing"
+                    >Continuar</Button
                 >
 
                 <div class="text-center text-sm text-muted-foreground">
-                    <span>or you can </span>
+                    <span>o puedes </span>
                     <button
                         type="button"
-                        class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                        class="rounded-sm font-medium text-brand-green-strong underline decoration-brand-green/40 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                         @click="() => toggleRecoveryMode(clearErrors)"
                     >
                         {{ authConfigContent.buttonText }}

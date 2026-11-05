@@ -8,8 +8,12 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 
-class PedidoEstadoMail extends Mailable {
-
+/**
+ * @deprecated Reemplazado por los correos de App\Mail\Pedidos (listeners de eventos de dominio).
+ *             Sólo lo referencia PaymentService (Openpay, deshabilitado). No usar.
+ */
+class PedidoEstadoMail extends Mailable
+{
     use Queueable, SerializesModels;
 
     public Pedido $pedido;
@@ -18,13 +22,15 @@ class PedidoEstadoMail extends Mailable {
 
     public ?string $urlRastreo;
 
-    public function __construct(Pedido $pedido, string $tipo) {
+    public function __construct(Pedido $pedido, string $tipo)
+    {
         $this->pedido = $pedido->loadMissing(['items', 'direccion', 'pagos.metodoPago']);
         $this->tipo = $tipo;
         $this->urlRastreo = $this->resolverUrlRastreo($pedido->paqueteria, $pedido->numero_guia);
     }
 
-    public function build(): self {
+    public function build(): self
+    {
         return $this
             ->subject($this->correoSubject())
             ->view('emails.pedidos.estado')
@@ -36,7 +42,8 @@ class PedidoEstadoMail extends Mailable {
             ]);
     }
 
-    private function correoSubject(): string {
+    private function correoSubject(): string
+    {
         return match ($this->tipo) {
             'pagado' => 'Recibimos tu pago · Pedido '.$this->pedido->folio,
             'preparando' => 'Estamos preparando tu pedido '.$this->pedido->folio,
@@ -46,7 +53,8 @@ class PedidoEstadoMail extends Mailable {
         };
     }
 
-    private function contenido(): array {
+    private function contenido(): array
+    {
         return match ($this->tipo) {
             'pagado' => [
                 'eyebrow' => 'Pago confirmado',
@@ -112,5 +120,4 @@ class PedidoEstadoMail extends Mailable {
 
         return null;
     }
-
 }

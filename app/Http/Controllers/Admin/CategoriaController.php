@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Catalogo\CategoriaRequest;
 use App\Models\Categoria;
+use App\Support\ImagenUrl;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -16,190 +20,166 @@ class CategoriaController extends Controller
 {
     public function index(Request $request): Response
     {
-        $search = trim((string) $request->string('search'));
-        $status = (string) $request->input('status', 'all');
+        $filtros = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'estado' => ['nullable', Rule::in(['activas', 'inactivas'])],
+        ]);
+
+        $q = trim((string) ($filtros['q'] ?? ''));
 
         $categorias = Categoria::query()
-            ->withCount('productos')
-            ->with('categoriaPadre:id,nombre')
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($subQuery) use ($search) {
-                    $subQuery
-                        ->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('slug', 'like', "%{$search}%")
-                        ->orWhere('descripcion', 'like', "%{$search}%");
-                });
-            })
-            ->when($status === 'active', fn ($query) => $query->where('activa', true))
-            ->when($status === 'inactive', fn ($query) => $query->where('activa', false))
-            ->latest('id')
-            ->paginate(12)
-            ->through(function (Categoria $categoria) {
-                return [
-                    'id' => $categoria->id,
-                    'categoria_padre_id' => $categoria->categoria_padre_id,
-                    'categoria_padre_nombre' => $categoria->categoriaPadre?->nombre,
-                    'nombre' => $categoria->nombre,
-                    'slug' => $categoria->slug,
-                    'descripcion' => $categoria->descripcion,
-                    'imagen' => $categoria->imagen ? Storage::url($categoria->imagen) : null,
-                    'activa' => (bool) $categoria->activa,
-                    'orden' => (int) $categoria->orden,
-                    'productos_count' => (int) ($categoria->productos_count ?? 0),
-                    'created_at' => $categoria->created_at?->toDateTimeString(),
-                ];
-            })
-            ->withQueryString();
-
-        $categoriasPadre = Categoria::query()
+            ->withCount(['productos', 'hijas'])
+            ->when($q !== '', fn (Builder $query) => $query->where(fn (Builder $w) => $w
+                ->where('nombre', 'like', '%'.$q.'%')
+                ->orWhere('slug', 'like', '%'.$q.'%')))
+            ->when(($filtros['estado'] ?? null) === 'activas', fn (Builder $query) => $query->where('activa', true))
+            ->when(($filtros['estado'] ?? null) === 'inactivas', fn (Builder $query) => $query->where('activa', false))
+            ->orderBy('orden')
             ->orderBy('nombre')
-            ->get(['id', 'nombre'])
-            ->map(fn (Categoria $categoria) => [
-                'id' => $categoria->id,
-                'nombre' => $categoria->nombre,
-            ]);
+            ->get();
+
+        $todas = Categoria::query()->orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'categoria_padre_id']);
 
         return Inertia::render('Admin/Categorias/Index', [
-            'categorias' => $categorias,
-            'categoriasPadre' => $categoriasPadre,
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-            ],
-            'endpoints' => [
-                'index' => route('admin.categorias.index'),
-                'store' => route('admin.categorias.store'),
-                'updateBase' => url('/admin/categorias'),
-                'destroyBase' => url('/admin/categorias'),
-            ],
+            'categorias' => $this->ordenarComoArbol($categorias)->map(fn (array $fila) => [
+                'id' => $fila['categoria']->id,
+                'nombre' => $fila['categoria']->nombre,
+                'slug' => $fila['categoria']->slug,
+                'descripcion' => $fila['categoria']->descripcion,
+                'categoria_padre_id' => $fila['categoria']->categoria_padre_id,
+                'padre' => $todas->firstWhere('id', $fila['categoria']->categoria_padre_id)?->nombre,
+                'nivel' => $fila['nivel'],
+                'imagen' => ImagenUrl::resolver($fila['categoria']->imagen),
+                'activa' => (bool) $fila['categoria']->activa,
+                'orden' => (int) $fila['categoria']->orden,
+                'productos_count' => (int) $fila['categoria']->productos_count,
+                'hijas_count' => (int) $fila['categoria']->hijas_count,
+            ])->values(),
+            'padres' => $todas->map(fn (Categoria $c) => ['id' => $c->id, 'nombre' => $c->nombre, 'categoria_padre_id' => $c->categoria_padre_id]),
+            'filtros' => ['q' => $q, 'estado' => $filtros['estado'] ?? ''],
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(CategoriaRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'categoria_padre_id' => ['nullable', 'integer', 'exists:categorias,id'],
-            'nombre' => ['required', 'string', 'max:150'],
-            'slug' => ['nullable', 'string', 'max:170', 'unique:categorias,slug'],
-            'descripcion' => ['nullable', 'string'],
-            'imagen_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
-            'activa' => ['nullable', 'boolean'],
-            'orden' => ['nullable', 'integer', 'min:0'],
-        ]);
+        $datos = $request->validated();
 
-        $categoria = new Categoria();
-        $categoria->categoria_padre_id = $data['categoria_padre_id'] ?? null;
-        $categoria->nombre = $data['nombre'];
-        $categoria->slug = $this->resolveSlug($data['slug'] ?? null, $data['nombre']);
-        $categoria->descripcion = $data['descripcion'] ?? null;
-        $categoria->activa = $request->boolean('activa', true);
-        $categoria->orden = $data['orden'] ?? 0;
-
-        if ($request->hasFile('imagen_file')) {
-            $categoria->imagen = $request->file('imagen_file')->store('categorias', 'public');
-        }
-
+        $categoria = new Categoria;
+        $this->llenar($categoria, $datos, $request);
         $categoria->save();
 
-        return back()->with('success', 'Categoría creada.');
+        return back()->with('success', 'Categoría «'.$categoria->nombre.'» creada.');
     }
 
     public function show(Categoria $categoria): RedirectResponse
     {
-        return redirect()
-            ->route('admin.categorias.index')
-            ->with('success', 'Detalle de categoría: ' . $categoria->nombre);
+        return redirect()->route('admin.categorias.index', ['q' => $categoria->nombre]);
     }
 
-    public function update(Request $request, Categoria $categoria): RedirectResponse
+    public function update(CategoriaRequest $request, Categoria $categoria): RedirectResponse
     {
-        $data = $request->validate([
-            'categoria_padre_id' => [
-                'nullable',
-                'integer',
-                'exists:categorias,id',
-                Rule::notIn([$categoria->id]),
-            ],
-            'nombre' => ['required', 'string', 'max:150'],
-            'slug' => [
-                'nullable',
-                'string',
-                'max:170',
-                Rule::unique('categorias', 'slug')->ignore($categoria->id),
-            ],
-            'descripcion' => ['nullable', 'string'],
-            'imagen_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
-            'remove_image' => ['nullable', 'boolean'],
-            'activa' => ['nullable', 'boolean'],
-            'orden' => ['nullable', 'integer', 'min:0'],
-        ]);
-
-        $removeImage = $request->boolean('remove_image');
-        $hasNewImage = $request->hasFile('imagen_file');
-
-        $categoria->categoria_padre_id = $data['categoria_padre_id'] ?? null;
-        $categoria->nombre = $data['nombre'];
-        $categoria->slug = $this->resolveSlug(
-            $data['slug'] ?? null,
-            $data['nombre'],
-            $categoria->id
-        );
-        $categoria->descripcion = $data['descripcion'] ?? null;
-        $categoria->activa = $request->boolean('activa', true);
-        $categoria->orden = $data['orden'] ?? 0;
-
-        if ($removeImage && $categoria->imagen) {
-            if (Storage::disk('public')->exists($categoria->imagen)) {
-                Storage::disk('public')->delete($categoria->imagen);
-            }
-            $categoria->imagen = null;
-        }
-
-        if ($hasNewImage) {
-            if ($categoria->imagen && Storage::disk('public')->exists($categoria->imagen)) {
-                Storage::disk('public')->delete($categoria->imagen);
-            }
-
-            $categoria->imagen = $request->file('imagen_file')->store('categorias', 'public');
-        }
-
+        $this->llenar($categoria, $request->validated(), $request);
         $categoria->save();
 
-        return back()->with('success', 'Categoría actualizada.');
+        return back()->with('success', 'Categoría «'.$categoria->nombre.'» actualizada.');
+    }
+
+    public function estado(Categoria $categoria): RedirectResponse
+    {
+        $categoria->forceFill(['activa' => ! $categoria->activa])->save();
+
+        return back()->with('success', 'Categoría «'.$categoria->nombre.'» '.($categoria->activa ? 'activada' : 'desactivada').'.');
     }
 
     public function destroy(Categoria $categoria): RedirectResponse
     {
-        if ($categoria->imagen && Storage::disk('public')->exists($categoria->imagen)) {
-            Storage::disk('public')->delete($categoria->imagen);
+        $productos = $categoria->productos()->count();
+
+        if ($productos > 0) {
+            return back()->with('error', "«{$categoria->nombre}» tiene {$productos} producto(s) asociados. Desactívala en lugar de eliminarla o reasigna sus productos.");
         }
 
+        if ($categoria->hijas()->exists()) {
+            return back()->with('error', "«{$categoria->nombre}» tiene subcategorías. Muévelas o elimínalas primero.");
+        }
+
+        $this->borrarImagen($categoria->imagen);
         $categoria->delete();
 
         return back()->with('success', 'Categoría eliminada.');
     }
 
-    private function resolveSlug(?string $slug, string $nombre, ?int $ignoreId = null): string
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    private function llenar(Categoria $categoria, array $datos, Request $request): void
     {
-        $base = Str::slug($slug ?: $nombre);
+        $categoria->forceFill([
+            'nombre' => $datos['nombre'],
+            'slug' => $this->slugUnico($datos['slug'] ?? null, $datos['nombre'], $categoria->id, $categoria->slug),
+            'categoria_padre_id' => $datos['categoria_padre_id'] ?? null,
+            'descripcion' => $datos['descripcion'] ?? null,
+            'activa' => (bool) ($datos['activa'] ?? true),
+            'orden' => (int) ($datos['orden'] ?? 0),
+        ]);
 
-        if ($base === '') {
-            $base = 'categoria';
+        if (($datos['quitar_imagen'] ?? false) && $categoria->imagen) {
+            $this->borrarImagen($categoria->imagen);
+            $categoria->imagen = null;
         }
 
-        $candidate = $base;
-        $counter = 2;
+        if ($request->hasFile('imagen')) {
+            $this->borrarImagen($categoria->imagen);
+            $categoria->imagen = $request->file('imagen')->store('categorias', 'public');
+        }
+    }
 
-        while (
-            Categoria::query()
-                ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
-                ->where('slug', $candidate)
-                ->exists()
-        ) {
-            $candidate = "{$base}-{$counter}";
-            $counter++;
+    /**
+     * @param  Collection<int, Categoria>  $categorias
+     * @return Collection<int, array{categoria: Categoria, nivel: int}>
+     */
+    private function ordenarComoArbol(Collection $categorias): Collection
+    {
+        $ids = $categorias->pluck('id')->all();
+        $porPadre = $categorias->groupBy(fn (Categoria $c) => in_array($c->categoria_padre_id, $ids, true) ? $c->categoria_padre_id : 0);
+        $resultado = collect();
+
+        $agregar = function (int $padre, int $nivel) use (&$agregar, $porPadre, $resultado) {
+            foreach ($porPadre->get($padre, collect()) as $categoria) {
+                $resultado->push(['categoria' => $categoria, 'nivel' => $nivel]);
+
+                if ($nivel < 5) {
+                    $agregar($categoria->id, $nivel + 1);
+                }
+            }
+        };
+
+        $agregar(0, 0);
+
+        return $resultado;
+    }
+
+    private function slugUnico(?string $slug, string $nombre, ?int $ignorar, ?string $actual): string
+    {
+        if (! $slug && $actual) {
+            return $actual;
         }
 
-        return $candidate;
+        $base = Str::limit(Str::slug($slug ?: $nombre) ?: 'categoria', 160, '');
+        $candidato = $base;
+        $n = 2;
+
+        while (Categoria::query()->when($ignorar, fn (Builder $q) => $q->whereKeyNot($ignorar))->where('slug', $candidato)->exists()) {
+            $candidato = $base.'-'.$n++;
+        }
+
+        return $candidato;
+    }
+
+    private function borrarImagen(?string $ruta): void
+    {
+        if ($ruta && ! Str::startsWith($ruta, ['http://', 'https://']) && Storage::disk('public')->exists($ruta)) {
+            Storage::disk('public')->delete($ruta);
+        }
     }
 }

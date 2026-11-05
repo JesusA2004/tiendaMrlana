@@ -1,396 +1,604 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Head, Link, usePage } from '@inertiajs/vue3'
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
-  ArrowUpRight,
-  Boxes,
-  ClipboardList,
-  CreditCard,
-  MapPin,
-  PackageCheck,
-  ShoppingCart,
-  Truck,
-  UserRound,
-  Wallet,
-  ShieldCheck,
-} from 'lucide-vue-next'
-import { dashboard } from '@/routes'
+    AlertTriangle,
+    ArrowRight,
+    Banknote,
+    CheckCircle2,
+    ClipboardList,
+    Clock,
+    HandCoins,
+    PackageCheck,
+    PackageOpen,
+    PackageSearch,
+    PackageX,
+    Receipt,
+    ScanSearch,
+    Send,
+    Store,
+    Truck,
+    Wallet,
+} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import AnimatedNumber from '@/components/admin/AnimatedNumber.vue';
+import { fechaHora } from '@/components/admin/formato';
+import KpiCard from '@/components/admin/KpiCard.vue';
+import {
+    TONO_BARRA,
+    TONO_ICONO,
+    TONO_PUNTO,
+    tono,
+} from '@/components/admin/tonos';
+import type { Opcion } from '@/components/admin/types';
+import { dashboard } from '@/routes';
 
 defineOptions({
-  layout: {
-    breadcrumbs: [
-      {
-        title: 'Inicio',
-        href: dashboard(),
-      },
-    ],
-  },
-})
+    layout: {
+        breadcrumbs: [{ title: 'Inicio', href: dashboard().url }],
+    },
+});
 
-interface SummaryCard {
-  label: string
-  value: string | number
-  hint: string
+type Atencion = {
+    clave: string;
+    titulo: string;
+    detalle: string;
+    href: string;
+    tono: string;
+    cantidad: number;
+};
+
+const props = defineProps<{
+    periodo: string;
+    periodos: Opcion[];
+    rango: { desde: string; hasta: string };
+    esAdmin: boolean;
+    operacion: {
+        pendientes_pago: number;
+        pagos_por_revisar: number;
+        por_cotizar: number;
+        esperando_eleccion: number;
+        por_preparar: number;
+        en_preparacion: number;
+        listos_envio: number;
+        enviados: number;
+        incidencias: number;
+        entregados_periodo: number;
+    };
+    flujo: { clave: string; label: string; valor: number; tono: string }[];
+    comercial: {
+        ventas_confirmadas: number;
+        pagos_confirmados: number;
+        importe_creados: number;
+        pedidos_creados: number;
+        cancelados_periodo: number;
+        saldo_contra_entrega: number;
+        pedidos_contra_entrega: number;
+        efectivo_por_confirmar: number;
+    } | null;
+    catalogo: {
+        publicados: number;
+        sin_existencias: number;
+        pendientes_aprobacion: number;
+    } | null;
+    atencion: Atencion[];
+}>();
+
+const page = usePage();
+const nombre = computed(
+    () => (page.props.auth?.user?.name ?? '').split(' ')[0] ?? '',
+);
+
+const cargando = ref(false);
+
+function cambiarPeriodo(valor: string) {
+    if (valor === props.periodo) {
+        return;
+    }
+
+    router.get(
+        dashboard().url,
+        { periodo: valor },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+            onStart: () => (cargando.value = true),
+            onFinish: () => (cargando.value = false),
+        },
+    );
 }
 
-interface QuickAction {
-  title: string
-  description: string
-  href: string
-}
+const etiquetaPeriodo = computed(
+    () =>
+        props.periodos.find((p) => p.value === props.periodo)?.label ??
+        props.periodo,
+);
 
-interface PanelItem {
-  label: string
-  value: string | number
-}
+const totalFlujo = computed(() =>
+    props.flujo.reduce((suma, e) => suma + e.valor, 0),
+);
 
-interface Panel {
-  title: string
-  items: PanelItem[]
-}
+const saludo = computed(() => {
+    const hora = Number(
+        new Intl.DateTimeFormat('es-MX', {
+            hour: 'numeric',
+            hour12: false,
+            timeZone: 'America/Mexico_City',
+        }).format(new Date()),
+    );
 
-interface DashboardStats {
-  resumen: SummaryCard[]
-  quickActions: QuickAction[]
-  panels: Panel[]
-}
+    return hora < 12
+        ? 'Buenos días'
+        : hora < 19
+          ? 'Buenas tardes'
+          : 'Buenas noches';
+});
 
-interface AuthUser {
-  id: number
-  name: string
-  email: string
-  rol?: string
-}
+const conversion = computed(() => {
+    if (!props.comercial || props.comercial.importe_creados <= 0) {
+        return null;
+    }
 
-interface SharedPageProps {
-  auth?: {
-    user?: AuthUser | null
-  }
-  stats: DashboardStats
-}
-
-const page = usePage<SharedPageProps>()
-
-const authUser = computed(() => page.props.auth?.user ?? null)
-const stats = computed(() => page.props.stats)
-
-const role = computed(() => authUser.value?.rol ?? 'cliente')
-
-const roleLabel = computed(() => {
-  if (role.value === 'admin') return 'Administrador'
-  if (role.value === 'vendedor') return 'Vendedor'
-  return 'Cliente'
-})
-
-const heroTitle = computed(() => {
-  if (role.value === 'admin') return 'Panel principal'
-  if (role.value === 'vendedor') return 'Seguimiento operativo'
-  return 'Mi cuenta'
-})
-
-const heroDescription = computed(() => {
-  if (role.value === 'admin') {
-    return 'Resumen general del negocio con foco en pedidos, pagos y operación.'
-  }
-  if (role.value === 'vendedor') {
-    return 'Vista clara para preparar, enviar y cerrar pedidos.'
-  }
-  return 'Consulta tus pedidos, direcciones y accesos rápidos.'
-})
-
-const firstPanel = computed(() => stats.value.panels?.[0] ?? null)
-const secondPanel = computed(() => stats.value.panels?.[1] ?? null)
-
-function numericValue(value: string | number): number {
-  if (typeof value === 'number') return value
-  const clean = String(value).replace(/[^\d.-]/g, '')
-  const parsed = Number(clean)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function iconForAction(title: string) {
-  const key = title.toLowerCase()
-
-  if (key.includes('producto')) return Boxes
-  if (key.includes('pedido')) return ClipboardList
-  if (key.includes('pago')) return Wallet
-  if (key.includes('método') || key.includes('metodo')) return CreditCard
-  if (key.includes('direcci')) return MapPin
-  if (key.includes('carrito')) return ShoppingCart
-  if (key.includes('catálogo') || key.includes('catalogo')) return PackageCheck
-
-  if (role.value === 'admin') return ShieldCheck
-  if (role.value === 'vendedor') return Truck
-  return UserRound
-}
-
-const summaryMax = computed(() => {
-  const values = stats.value.resumen.map((item) => numericValue(item.value))
-  return Math.max(...values, 1)
-})
-
-function summaryWidth(value: string | number) {
-  const n = numericValue(value)
-  if (n <= 0) return '0%'
-  return `${Math.min(Math.max((n / summaryMax.value) * 100, 12), 100)}%`
-}
-
-const firstValues = computed(() => (firstPanel.value?.items ?? []).map((item) => numericValue(item.value)))
-const firstPanelMax = computed(() => Math.max(...firstValues.value, 1))
-const hasFirstChartData = computed(() => firstValues.value.some((n) => n > 0))
-
-const secondValues = computed(() => (secondPanel.value?.items ?? []).map((item) => numericValue(item.value)))
-const secondPanelMax = computed(() => Math.max(...secondValues.value, 1))
-
-function widthPercent(value: string | number, max: number) {
-  const n = numericValue(value)
-  if (n <= 0) return '0%'
-  return `${Math.min(Math.max((n / Math.max(max, 1)) * 100, 10), 100)}%`
-}
-
-const linePoints = computed(() => {
-  const items = firstPanel.value?.items ?? []
-  if (!items.length) return ''
-
-  const values = items.map((item) => numericValue(item.value))
-  const max = Math.max(...values, 1)
-  const step = items.length === 1 ? 100 : 100 / (items.length - 1)
-
-  return values
-    .map((value, index) => {
-      const x = index * step
-      const y = value <= 0 ? 100 : 100 - (value / max) * 78
-      return `${x},${y}`
-    })
-    .join(' ')
-})
-
-const areaPoints = computed(() => {
-  if (!linePoints.value) return ''
-  return `0,100 ${linePoints.value} 100,100`
-})
-
-function actionTone(index: number) {
-  const tones = [
-    'bg-slate-50 border-slate-200',
-    'bg-zinc-50 border-zinc-200',
-    'bg-neutral-50 border-neutral-200',
-    'bg-stone-50 border-stone-200',
-  ]
-  return tones[index % tones.length]
-}
-
-function chipTone(index: number) {
-  const tones = [
-    'bg-slate-900 text-white',
-    'bg-zinc-800 text-white',
-    'bg-neutral-800 text-white',
-    'bg-stone-700 text-white',
-  ]
-  return tones[index % tones.length]
-}
+    return Math.min(
+        100,
+        Math.round(
+            (props.comercial.ventas_confirmadas /
+                props.comercial.importe_creados) *
+                100,
+        ),
+    );
+});
 </script>
 
 <template>
-  <Head title="Dashboard" />
+    <Head title="Inicio" />
 
-  <main class="flex flex-1 flex-col gap-5 bg-[#f6f7f9] p-4 sm:p-6 lg:p-8">
-    <section class="rounded-[28px] border border-slate-200 bg-white px-6 py-6 shadow-[0_16px_40px_rgba(15,23,42,0.045)]">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <header class="max-w-3xl">
-          <span class="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-700">
-            {{ roleLabel }}
-          </span>
+    <div class="flex flex-col gap-6 p-4 md:p-6">
+        <!-- Encabezado de marca -->
+        <section
+            class="relative overflow-hidden rounded-3xl bg-brand-deep-pattern p-5 text-white shadow-lg sm:p-7"
+        >
+            <div
+                class="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-brand-gradient opacity-30 blur-3xl"
+                aria-hidden="true"
+            />
+            <div
+                class="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"
+            >
+                <div>
+                    <p
+                        class="text-xs font-semibold tracking-[0.16em] text-brand-green uppercase"
+                    >
+                        {{
+                            esAdmin
+                                ? 'Panel de operación'
+                                : 'Panel del vendedor'
+                        }}
+                    </p>
+                    <h1
+                        class="mt-1 font-display text-3xl leading-tight font-bold sm:text-4xl"
+                    >
+                        {{ saludo }}{{ nombre ? `, ${nombre}` : '' }}
+                    </h1>
+                    <p class="mt-1 max-w-xl text-sm text-white/75">
+                        <template v-if="atencion.length">
+                            Tienes
+                            <strong class="text-white">{{
+                                atencion.reduce((s, a) => s + a.cantidad, 0)
+                            }}</strong>
+                            pendientes que requieren atención.
+                        </template>
+                        <template v-else>
+                            Todo al día. No hay pendientes urgentes.
+                        </template>
+                    </p>
+                </div>
 
-          <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-5xl">
-            {{ heroTitle }}
-          </h1>
-
-          <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-            {{ heroDescription }}
-          </p>
-        </header>
-
-      </div>
-    </section>
-
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <article
-        v-for="(card, index) in stats.resumen"
-        :key="card.label"
-        class="rounded-[24px] border border-slate-200 bg-white px-5 py-5 shadow-[0_12px_30px_rgba(15,23,42,0.035)]"
-      >
-        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-          {{ card.label }}
-        </p>
-
-        <p class="mt-3 text-3xl font-black tracking-tight text-slate-900">
-          {{ card.value }}
-        </p>
-
-        <div class="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div
-            v-if="numericValue(card.value) > 0"
-            class="h-full rounded-full bg-slate-900"
-            :style="{ width: summaryWidth(card.value) }"
-          />
-        </div>
-
-        <p class="mt-4 text-sm leading-6 text-slate-500">
-          {{ card.hint }}
-        </p>
-      </article>
-    </section>
-
-    <section class="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-      <article class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.045)]">
-        <header class="flex items-center justify-between gap-3">
-          <div>
-            <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-              Accesos rápidos
-            </p>
-            <h2 class="mt-2 text-2xl font-black text-slate-900">
-              Atajos principales
-            </h2>
-          </div>
-        </header>
-
-        <div class="mt-6 grid gap-4 md:grid-cols-2">
-          <Link
-            v-for="(action, index) in stats.quickActions"
-            :key="action.title"
-            :href="action.href"
-            class="group rounded-[22px] border px-5 py-5 transition-all duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-[0_16px_36px_rgba(15,23,42,0.055)]"
-            :class="actionTone(index)"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm">
-                <component :is="iconForAction(action.title)" class="h-5 w-5" />
-              </span>
-
-              <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1">
-                <ArrowUpRight class="h-4 w-4" />
-              </span>
+                <div
+                    class="flex w-full flex-wrap gap-1 rounded-2xl bg-white/10 p-1 backdrop-blur sm:w-auto"
+                    role="radiogroup"
+                    aria-label="Periodo"
+                >
+                    <button
+                        v-for="p in periodos"
+                        :key="p.value"
+                        type="button"
+                        role="radio"
+                        :aria-checked="p.value === periodo"
+                        :class="[
+                            'flex-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition sm:flex-none',
+                            p.value === periodo
+                                ? 'bg-brand-green text-brand-ink shadow'
+                                : 'text-white/80 hover:bg-white/10',
+                        ]"
+                        @click="cambiarPeriodo(p.value)"
+                    >
+                        {{ p.label }}
+                    </button>
+                </div>
             </div>
 
-            <h3 class="mt-5 text-lg font-black text-slate-900">
-              {{ action.title }}
-            </h3>
-
-            <p class="mt-2 text-sm leading-6 text-slate-600">
-              {{ action.description }}
-            </p>
-          </Link>
-        </div>
-      </article>
-
-      <article class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.045)]">
-        <header>
-          <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-            Gráfica
-          </p>
-          <h2 class="mt-2 text-2xl font-black text-slate-900">
-            {{ firstPanel?.title || 'Panorama principal' }}
-          </h2>
-        </header>
-
-        <div v-if="hasFirstChartData" class="mt-6">
-          <div class="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
-            <svg
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              class="h-[230px] w-full"
-            >
-              <defs>
-                <linearGradient id="lineFillSoft" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stop-color="rgba(15,23,42,0.18)" />
-                  <stop offset="100%" stop-color="rgba(15,23,42,0.02)" />
-                </linearGradient>
-              </defs>
-
-              <polygon
-                :points="areaPoints"
-                fill="url(#lineFillSoft)"
-              />
-
-              <polyline
-                :points="linePoints"
-                fill="none"
-                stroke="rgba(15,23,42,0.95)"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </div>
-
-          <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <article
-              v-for="(item, index) in firstPanel?.items ?? []"
-              :key="item.label"
-              class="rounded-[18px] border border-slate-200 px-4 py-4"
-              :class="numericValue(item.value) > 0 ? 'bg-white' : 'bg-slate-50'"
-            >
-              <div class="flex items-center justify-between gap-3">
-                <p class="text-sm font-semibold text-slate-600">
-                  {{ item.label }}
-                </p>
-                <span
-                  class="inline-flex min-w-9 items-center justify-center rounded-full px-2.5 py-1 text-xs font-black"
-                  :class="numericValue(item.value) > 0 ? chipTone(index) : 'bg-slate-200 text-slate-500'"
-                >
-                  {{ item.value }}
-                </span>
-              </div>
-            </article>
-          </div>
-        </div>
-
-        <div
-          v-else
-          class="mt-6 rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center"
-        >
-          <p class="text-sm font-medium text-slate-500">
-            Aún no hay datos suficientes para mostrar esta gráfica.
-          </p>
-        </div>
-      </article>
-    </section>
-
-    <article class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.045)]">
-      <header>
-        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-          Distribución
-        </p>
-        <h2 class="mt-2 text-2xl font-black text-slate-900">
-          {{ secondPanel?.title || 'Indicadores' }}
-        </h2>
-      </header>
-
-      <div v-if="secondPanel?.items?.length" class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article
-          v-for="(item, index) in secondPanel.items"
-          :key="item.label"
-          class="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <p class="text-sm font-semibold text-slate-700">
-              {{ item.label }}
-            </p>
-            <p class="text-2xl font-black text-slate-900">
-              {{ item.value }}
-            </p>
-          </div>
-
-          <div class="mt-4 h-2 overflow-hidden rounded-full bg-white">
+            <!-- Ventas (sólo admin) -->
             <div
-              v-if="numericValue(item.value) > 0"
-              class="h-full rounded-full bg-slate-900"
-              :style="{ width: widthPercent(item.value, secondPanelMax) }"
-            />
-          </div>
-        </article>
-      </div>
-    </article>
-  </main>
+                v-if="comercial"
+                :class="[
+                    'relative mt-6 grid gap-4 transition-opacity sm:grid-cols-3',
+                    cargando && 'opacity-60',
+                ]"
+            >
+                <div class="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
+                    <p class="flex items-center gap-2 text-xs text-white/75">
+                        <CheckCircle2 class="size-4 text-brand-green" /> Ventas
+                        confirmadas · {{ etiquetaPeriodo.toLowerCase() }}
+                    </p>
+                    <p class="mt-2 font-display text-3xl font-bold sm:text-4xl">
+                        <AnimatedNumber
+                            :value="comercial.ventas_confirmadas"
+                            formato="moneda"
+                        />
+                    </p>
+                    <p class="mt-1 text-xs text-white/70">
+                        {{ comercial.pagos_confirmados }}
+                        {{
+                            comercial.pagos_confirmados === 1
+                                ? 'pago aprobado'
+                                : 'pagos aprobados'
+                        }}
+                        o efectivo recibido
+                    </p>
+                </div>
+                <div class="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                    <p class="flex items-center gap-2 text-xs text-white/75">
+                        <Receipt class="size-4 text-brand-teal" /> Importe de
+                        pedidos creados
+                    </p>
+                    <p class="mt-2 font-display text-2xl font-bold sm:text-3xl">
+                        <AnimatedNumber
+                            :value="comercial.importe_creados"
+                            formato="moneda"
+                        />
+                    </p>
+                    <p class="mt-1 text-xs text-white/70">
+                        {{ comercial.pedidos_creados }}
+                        {{
+                            comercial.pedidos_creados === 1
+                                ? 'pedido'
+                                : 'pedidos'
+                        }}
+                        ·
+                        {{ comercial.cancelados_periodo }}
+                        {{
+                            comercial.cancelados_periodo === 1
+                                ? 'cancelado'
+                                : 'cancelados'
+                        }}. No es venta hasta confirmar el pago.
+                    </p>
+                </div>
+                <div class="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                    <p class="flex items-center gap-2 text-xs text-white/75">
+                        <HandCoins class="size-4 text-brand-green" /> Contra
+                        entrega por cobrar
+                    </p>
+                    <p class="mt-2 font-display text-2xl font-bold sm:text-3xl">
+                        <AnimatedNumber
+                            :value="comercial.saldo_contra_entrega"
+                            formato="moneda"
+                        />
+                    </p>
+                    <p class="mt-1 text-xs text-white/70">
+                        {{ comercial.pedidos_contra_entrega }}
+                        {{
+                            comercial.pedidos_contra_entrega === 1
+                                ? 'pedido'
+                                : 'pedidos'
+                        }}
+                        con saldo pendiente
+                    </p>
+                </div>
+                <div
+                    v-if="conversion !== null"
+                    class="sm:col-span-3"
+                    aria-label="Proporción cobrada del importe creado"
+                >
+                    <div
+                        class="flex items-center justify-between text-xs text-white/70"
+                    >
+                        <span>Cobrado vs. importe creado en el periodo</span>
+                        <span class="font-semibold text-white"
+                            >{{ conversion }}%</span
+                        >
+                    </div>
+                    <div
+                        class="mt-1.5 h-2 overflow-hidden rounded-full bg-white/15"
+                    >
+                        <div
+                            class="h-full rounded-full bg-brand-gradient transition-[width] duration-1000 ease-out"
+                            :style="{ width: `${conversion}%` }"
+                        />
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div class="flex min-w-0 flex-col gap-6">
+                <!-- KPIs operativos -->
+                <section aria-labelledby="kpi-operacion">
+                    <h2
+                        id="kpi-operacion"
+                        class="mb-3 font-display text-lg font-semibold"
+                    >
+                        Operación ahora
+                    </h2>
+                    <div
+                        class="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4"
+                    >
+                        <KpiCard
+                            v-if="esAdmin"
+                            label="Pagos por revisar"
+                            :value="operacion.pagos_por_revisar"
+                            :icon="ScanSearch"
+                            color="info"
+                            hint="Comprobantes de transferencia"
+                            href="/admin/pagos?tab=revision"
+                        />
+                        <KpiCard
+                            v-if="esAdmin && comercial"
+                            label="Efectivo por confirmar"
+                            :value="comercial.efectivo_por_confirmar"
+                            :icon="Banknote"
+                            color="warning"
+                            hint="Pago en tienda"
+                            href="/admin/pagos?tab=efectivo"
+                        />
+                        <KpiCard
+                            label="Pendientes de pago"
+                            :value="operacion.pendientes_pago"
+                            :icon="Clock"
+                            color="neutral"
+                            hint="Esperando al cliente"
+                            href="/admin/pedidos?estatus=pendiente_pago"
+                        />
+                        <KpiCard
+                            label="Envíos por cotizar"
+                            :value="operacion.por_cotizar"
+                            :icon="Wallet"
+                            color="warning"
+                            hint="El cliente no puede pagar aún"
+                            href="/admin/envios?tab=por_cotizar"
+                        />
+                        <KpiCard
+                            label="Esperando elección"
+                            :value="operacion.esperando_eleccion"
+                            :icon="Truck"
+                            color="info"
+                            hint="El cliente elige paquetería"
+                            href="/admin/envios?tab=esperando_eleccion"
+                        />
+                        <KpiCard
+                            label="Por preparar"
+                            :value="operacion.por_preparar"
+                            :icon="PackageOpen"
+                            color="success"
+                            hint="Pago confirmado"
+                            href="/admin/envios?tab=por_preparar"
+                        />
+                        <KpiCard
+                            label="En preparación"
+                            :value="operacion.en_preparacion"
+                            :icon="ClipboardList"
+                            color="info"
+                            href="/admin/envios?tab=en_preparacion"
+                        />
+                        <KpiCard
+                            label="Listos para envío"
+                            :value="operacion.listos_envio"
+                            :icon="PackageCheck"
+                            color="info"
+                            hint="Falta guía o recoger"
+                            href="/admin/envios?tab=listos"
+                        />
+                        <KpiCard
+                            label="Enviados sin entregar"
+                            :value="operacion.enviados"
+                            :icon="Truck"
+                            color="brand"
+                            href="/admin/envios?tab=enviados"
+                        />
+                        <KpiCard
+                            :label="`Entregados · ${etiquetaPeriodo.toLowerCase()}`"
+                            :value="operacion.entregados_periodo"
+                            :icon="Send"
+                            color="success"
+                            destacado
+                        />
+                    </div>
+                </section>
+
+                <!-- Flujo de pedidos activos -->
+                <section
+                    class="rounded-2xl border bg-card p-4 sm:p-5"
+                    aria-labelledby="flujo-titulo"
+                >
+                    <div class="flex items-baseline justify-between gap-3">
+                        <h2
+                            id="flujo-titulo"
+                            class="font-display text-lg font-semibold"
+                        >
+                            Flujo de pedidos activos
+                        </h2>
+                        <p class="text-sm text-muted-foreground">
+                            <AnimatedNumber :value="totalFlujo" /> en curso
+                        </p>
+                    </div>
+                    <div
+                        class="mt-4 flex h-3 overflow-hidden rounded-full bg-muted"
+                        role="img"
+                        :aria-label="
+                            flujo
+                                .map((e) => `${e.label}: ${e.valor}`)
+                                .join(', ')
+                        "
+                    >
+                        <div
+                            v-for="e in flujo.filter((x) => x.valor > 0)"
+                            :key="e.clave"
+                            :class="[
+                                'h-full transition-[width] duration-700 ease-out first:rounded-l-full last:rounded-r-full',
+                                TONO_BARRA[tono(e.tono)],
+                            ]"
+                            :style="{
+                                width: `${(e.valor / totalFlujo) * 100}%`,
+                            }"
+                        />
+                    </div>
+                    <ol class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <li v-for="(e, i) in flujo" :key="e.clave">
+                            <Link
+                                :href="`/admin/pedidos?estatus=${e.clave}`"
+                                class="flex h-full flex-col gap-1 rounded-xl border p-2.5 transition hover:border-brand-teal/60 hover:bg-surface"
+                            >
+                                <span
+                                    class="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground"
+                                >
+                                    <span
+                                        :class="[
+                                            'size-2 rounded-full',
+                                            TONO_PUNTO[tono(e.tono)],
+                                        ]"
+                                    />
+                                    {{ i + 1 }}.
+                                </span>
+                                <span
+                                    class="text-xs leading-tight font-medium"
+                                    >{{ e.label }}</span
+                                >
+                                <span
+                                    class="font-display text-xl font-bold tabular-nums"
+                                    >{{ e.valor }}</span
+                                >
+                            </Link>
+                        </li>
+                    </ol>
+                </section>
+
+                <!-- Catálogo -->
+                <section v-if="catalogo" aria-labelledby="kpi-catalogo">
+                    <h2
+                        id="kpi-catalogo"
+                        class="mb-3 font-display text-lg font-semibold"
+                    >
+                        Catálogo
+                    </h2>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <KpiCard
+                            label="Productos publicados"
+                            :value="catalogo.publicados"
+                            :icon="Store"
+                            color="success"
+                            hint="Visibles en la tienda"
+                            href="/admin/productos"
+                        />
+                        <KpiCard
+                            label="Publicados sin existencias"
+                            :value="catalogo.sin_existencias"
+                            :icon="PackageX"
+                            :color="
+                                catalogo.sin_existencias > 0
+                                    ? 'danger'
+                                    : 'neutral'
+                            "
+                            hint="Se muestran como agotados"
+                            href="/admin/inventario"
+                        />
+                        <KpiCard
+                            label="Pendientes de aprobación"
+                            :value="catalogo.pendientes_aprobacion"
+                            :icon="PackageSearch"
+                            :color="
+                                catalogo.pendientes_aprobacion > 0
+                                    ? 'warning'
+                                    : 'neutral'
+                            "
+                            hint="Revisa precio, imágenes y stock"
+                            href="/admin/productos?estado=pendiente_aprobacion"
+                        />
+                    </div>
+                </section>
+            </div>
+
+            <!-- Requiere atención -->
+            <aside
+                class="flex flex-col rounded-2xl border bg-card xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:self-start"
+                aria-labelledby="atencion-titulo"
+            >
+                <div class="flex items-center justify-between border-b p-4">
+                    <h2
+                        id="atencion-titulo"
+                        class="flex items-center gap-2 font-display text-lg font-semibold"
+                    >
+                        <AlertTriangle class="size-5 text-warning" />
+                        Requiere atención
+                    </h2>
+                    <span
+                        class="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums"
+                        >{{ atencion.length }}</span
+                    >
+                </div>
+                <ul
+                    v-if="atencion.length"
+                    class="flex-1 divide-y overflow-y-auto"
+                >
+                    <li v-for="a in atencion" :key="a.clave">
+                        <Link
+                            :href="a.href"
+                            class="group flex items-start gap-3 p-4 transition hover:bg-surface"
+                        >
+                            <span
+                                :class="[
+                                    'mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold tabular-nums',
+                                    TONO_ICONO[tono(a.tono)],
+                                ]"
+                                >{{
+                                    a.cantidad > 99 ? '99+' : a.cantidad
+                                }}</span
+                            >
+                            <span class="min-w-0 flex-1">
+                                <span
+                                    class="block text-sm leading-snug font-semibold"
+                                    >{{ a.titulo }}</span
+                                >
+                                <span
+                                    class="mt-0.5 block text-xs text-muted-foreground"
+                                    >{{ a.detalle }}</span
+                                >
+                            </span>
+                            <ArrowRight
+                                class="mt-1 size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground"
+                            />
+                        </Link>
+                    </li>
+                </ul>
+                <div
+                    v-else
+                    class="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center"
+                >
+                    <span
+                        class="grid size-12 place-items-center rounded-2xl bg-brand-green-soft text-brand-green-strong"
+                    >
+                        <CheckCircle2 class="size-6" />
+                    </span>
+                    <p class="font-display font-semibold">Sin pendientes</p>
+                    <p class="text-xs text-muted-foreground">
+                        Te avisaremos aquí cuando algo necesite tu revisión.
+                    </p>
+                </div>
+                <p
+                    class="border-t px-4 py-2 text-[0.7rem] text-muted-foreground"
+                >
+                    Actualizado {{ fechaHora(rango.hasta) }}
+                </p>
+            </aside>
+        </div>
+    </div>
 </template>

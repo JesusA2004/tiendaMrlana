@@ -1,215 +1,534 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Link } from '@inertiajs/vue3'
-import logo from '@/img/logo.png'
+import { Link, usePage } from '@inertiajs/vue3';
+import { useWindowScroll } from '@vueuse/core';
+import {
+    ChevronDown,
+    LayoutDashboard,
+    LogIn,
+    LogOut,
+    MapPin,
+    Menu,
+    Package,
+    Search,
+    ShoppingBag,
+    Store,
+    UserRound,
+    X,
+} from 'lucide-vue-next';
+import { computed, onMounted, ref, watch } from 'vue';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
+import logo from '@/img/logo.png';
+import SearchBox from './SearchBox.vue';
+import { urls } from './tienda';
+import type { PropsCompartidasTienda } from './types';
+import { useMenuCategorias } from './useMenuCategorias';
 
-const props = defineProps<{
-  carritoCantidad: number
-  authUser?: {
-    id: number
-    name: string
-    rol?: string
-  } | null
-}>()
+const page = usePage<PropsCompartidasTienda>();
+const { y } = useWindowScroll();
+const { categorias, cargado, cargar } = useMenuCategorias();
 
-const mobileOpen = ref(false)
+const menuMovil = ref(false);
+const buscadorMovil = ref(false);
+const menuCategorias = ref(false);
 
-const dashboardHref = computed(() => {
-  if (!props.authUser) return '/login'
+const usuario = computed(() => page.props.auth?.user ?? null);
+const esPersonal = computed(
+    () => usuario.value?.rol === 'admin' || usuario.value?.rol === 'vendedor',
+);
+const cantidad = computed(() =>
+    Math.max(0, Number(page.props.carrito?.cantidad_items ?? 0)),
+);
+const conScroll = computed(() => y.value > 8);
+const busquedaActual = computed(() => {
+    const url = page.url ?? '';
+    const consulta = url.includes('?') ? url.split('?')[1] : '';
 
-  switch (props.authUser.rol) {
-    case 'admin':
-      return '/dashboard'
-    case 'vendedor':
-      return '/dashboard'
-    case 'cliente':
-      return '/dashboard'
-    default:
-      return '/dashboard'
-  }
-})
+    return new URLSearchParams(consulta).get('q') ?? '';
+});
+const rutaActual = computed(() => (page.url ?? '/').split('?')[0]);
 
-const accountHref = computed(() => {
-  return props.authUser ? dashboardHref.value : '/login'
-})
+// Pequeño rebote del contador del carrito cuando cambia.
+const rebote = ref(false);
+watch(cantidad, (nuevo, anterior) => {
+    if (nuevo > anterior) {
+        rebote.value = false;
+        requestAnimationFrame(() => {
+            rebote.value = true;
+        });
+    }
+});
 
-const mobileAccountLabel = computed(() => {
-  return props.authUser ? 'Mi cuenta' : 'Iniciar sesión'
-})
+watch(menuCategorias, (abierto) => {
+    if (abierto) {
+        cargar();
+    }
+});
 
-function toggleMobile() {
-  mobileOpen.value = !mobileOpen.value
-}
+watch(menuMovil, (abierto) => {
+    if (abierto) {
+        cargar();
+    }
+});
 
-function closeMobile() {
-  mobileOpen.value = false
+onMounted(() => {
+    // Precarga perezosa del menú cuando el navegador esté libre.
+    const ric = (
+        window as Window & { requestIdleCallback?: (cb: () => void) => number }
+    ).requestIdleCallback;
+
+    if (ric) {
+        ric(() => cargar());
+    }
+});
+
+function iniciales(nombre: string): string {
+    return nombre
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0]?.toUpperCase())
+        .join('');
 }
 </script>
 
 <template>
-  <header class="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur-xl">
-    <div class="mx-auto w-full max-w-[1500px] px-4 py-4 md:px-8">
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex items-center gap-4 lg:gap-10">
-          <Link href="/" class="group shrink-0">
-            <img
-              :src="logo"
-              alt="Mr. Lana"
-              class="h-12 w-auto object-contain transition duration-300 group-hover:scale-[1.03] md:h-14"
-            />
-          </Link>
-
-          <nav class="hidden items-center gap-7 lg:flex">
-            <Link
-              href="/"
-              class="group relative text-sm font-bold text-neutral-700 transition duration-300 hover:text-[var(--brand-blue)]"
-            >
-              <span>Inicio</span>
-              <span class="absolute -bottom-2 left-0 h-[2px] w-0 rounded-full bg-[var(--brand-blue)] transition-all duration-300 group-hover:w-full" />
-            </Link>
-
-            <a
-              href="/#catalogo-categorias"
-              class="group relative text-sm font-bold text-neutral-700 transition duration-300 hover:text-[var(--brand-blue)]"
-            >
-              <span>Categorías</span>
-              <span class="absolute -bottom-2 left-0 h-[2px] w-0 rounded-full bg-[var(--brand-blue)] transition-all duration-300 group-hover:w-full" />
-            </a>
-
-            <a
-              href="/#productos-destacados"
-              class="group relative text-sm font-bold text-neutral-700 transition duration-300 hover:text-[var(--brand-blue)]"
-            >
-              <span>Destacados</span>
-              <span class="absolute -bottom-2 left-0 h-[2px] w-0 rounded-full bg-[var(--brand-blue)] transition-all duration-300 group-hover:w-full" />
-            </a>
-
-            <Link
-              href="/productos"
-              class="group relative text-sm font-bold text-neutral-700 transition duration-300 hover:text-[var(--brand-blue)]"
-            >
-              <span>Productos</span>
-              <span class="absolute -bottom-2 left-0 h-[2px] w-0 rounded-full bg-[var(--brand-blue)] transition-all duration-300 group-hover:w-full" />
-            </Link>
-
-            <a
-              href="/#contacto-home"
-              class="group relative text-sm font-bold text-neutral-700 transition duration-300 hover:text-[var(--brand-blue)]"
-            >
-              <span>Contacto</span>
-              <span class="absolute -bottom-2 left-0 h-[2px] w-0 rounded-full bg-[var(--brand-blue)] transition-all duration-300 group-hover:w-full" />
-            </a>
-          </nav>
-        </div>
-
-        <div class="hidden items-center gap-3 lg:flex">
-          <Link
-            :href="accountHref"
-            class="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--brand-gray)] bg-white text-[#11142C] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)] hover:shadow-lg"
-            :title="props.authUser ? 'Mi cuenta' : 'Iniciar sesión'"
-            :aria-label="props.authUser ? 'Mi cuenta' : 'Iniciar sesión'"
-          >
-            <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current transition duration-300" stroke-width="1.9">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6.75a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 19.125a7.5 7.5 0 0 1 15 0" />
-            </svg>
-          </Link>
-
-          <Link
-            href="/carrito"
-            class="group relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--brand-gray)] bg-white text-[#11142C] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--brand-green)] hover:text-[var(--brand-green)] hover:shadow-lg"
-            title="Carrito"
-            aria-label="Carrito"
-          >
-            <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current transition duration-300" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.836L5.55 7.5m0 0h12.9c.75 0 1.401.521 1.57 1.252l.798 3.454a1.125 1.125 0 0 1-1.096 1.379H7.125m-1.575-6 1.5 6m0 0a2.25 2.25 0 1 0 4.5 0m-4.5 0h4.5m6 0a2.25 2.25 0 1 0 4.5 0" />
-            </svg>
-
-            <span
-              v-if="carritoCantidad > 0"
-              class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--brand-green)] px-1 text-[10px] font-black text-white shadow"
-            >
-              {{ carritoCantidad }}
-            </span>
-          </Link>
-        </div>
-
-        <div class="flex items-center gap-3 lg:hidden">
-          <Link
-            href="/carrito"
-            class="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--brand-gray)] bg-white text-[#11142C] shadow-sm transition-all duration-300 hover:border-[var(--brand-green)] hover:text-[var(--brand-green)]"
-          >
-            <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.836L5.55 7.5m0 0h12.9c.75 0 1.401.521 1.57 1.252l.798 3.454a1.125 1.125 0 0 1-1.096 1.379H7.125m-1.575-6 1.5 6m0 0a2.25 2.25 0 1 0 4.5 0m-4.5 0h4.5m6 0a2.25 2.25 0 1 0 4.5 0" />
-            </svg>
-
-            <span
-              v-if="carritoCantidad > 0"
-              class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--brand-green)] px-1 text-[10px] font-black text-white shadow"
-            >
-              {{ carritoCantidad }}
-            </span>
-          </Link>
-
-          <button
-            type="button"
-            class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--brand-gray)] bg-white text-[#11142C] transition-all duration-300 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
-            @click="toggleMobile"
-          >
-            <svg v-if="!mobileOpen" viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-            <svg v-else viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <Transition
-        enter-active-class="transition duration-200 ease-out"
-        enter-from-class="opacity-0 -translate-y-2"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 -translate-y-2"
-      >
-        <div
-          v-if="mobileOpen"
-          class="mt-4 overflow-hidden rounded-[28px] border border-[var(--brand-gray)] bg-white p-4 shadow-[0_24px_55px_rgba(17,20,44,0.10)] lg:hidden"
+    <header
+        class="sticky top-0 z-40 w-full border-b transition-[background-color,border-color,box-shadow] duration-300"
+        :class="
+            conScroll
+                ? 'border-border/70 bg-background/85 shadow-[0_8px_24px_-18px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75'
+                : 'border-transparent bg-background'
+        "
+    >
+        <a
+            href="#contenido"
+            class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
         >
-          <div class="grid gap-2">
-            <Link href="/" class="rounded-2xl px-4 py-3 text-sm font-bold text-neutral-700 transition hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]" @click="closeMobile">
-              Inicio
-            </Link>
+            Saltar al contenido
+        </a>
 
-            <a href="/#catalogo-categorias" class="rounded-2xl px-4 py-3 text-sm font-bold text-neutral-700 transition hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]" @click="closeMobile">
-              Categorías
-            </a>
-
-            <a href="/#productos-destacados" class="rounded-2xl px-4 py-3 text-sm font-bold text-neutral-700 transition hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]" @click="closeMobile">
-              Destacados
-            </a>
-
-            <Link href="/productos" class="rounded-2xl px-4 py-3 text-sm font-bold text-neutral-700 transition hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]" @click="closeMobile">
-              Productos
-            </Link>
-
-            <a href="/#contacto-home" class="rounded-2xl px-4 py-3 text-sm font-bold text-neutral-700 transition hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]" @click="closeMobile">
-              Contacto
-            </a>
-          </div>
-
-          <div class="mt-4">
-            <Link
-              :href="accountHref"
-              class="inline-flex w-full items-center justify-center rounded-full bg-[#11142C] px-4 py-3 text-sm font-black text-white transition-all duration-300 hover:bg-[var(--brand-green)] hover:text-[#11142C]"
-              @click="closeMobile"
+        <div
+            class="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:h-[72px] lg:gap-6 lg:px-8"
+        >
+            <!-- Menú móvil -->
+            <button
+                type="button"
+                class="-ml-2 inline-flex size-11 items-center justify-center rounded-full text-foreground hover:bg-muted lg:hidden"
+                aria-label="Abrir menú"
+                @click="menuMovil = true"
             >
-              {{ mobileAccountLabel }}
+                <Menu class="size-5" />
+            </button>
+
+            <Link
+                :href="urls.home"
+                class="flex shrink-0 items-center rounded-lg focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                aria-label="Mr Lana, ir al inicio"
+            >
+                <img
+                    :src="logo"
+                    alt="Mr Lana"
+                    width="508"
+                    height="192"
+                    class="h-8 w-auto transition-transform duration-300 hover:-rotate-2 sm:h-9 lg:h-10"
+                />
             </Link>
-          </div>
+
+            <!-- Navegación de escritorio -->
+            <nav
+                class="hidden items-center gap-1 lg:flex"
+                aria-label="Principal"
+            >
+                <Popover v-model:open="menuCategorias">
+                    <PopoverTrigger as-child>
+                        <button
+                            type="button"
+                            class="inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted data-[state=open]:bg-muted"
+                        >
+                            Categorías
+                            <ChevronDown
+                                class="size-4 transition-transform duration-200"
+                                :class="{ 'rotate-180': menuCategorias }"
+                            />
+                        </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        align="start"
+                        :side-offset="12"
+                        class="w-[min(92vw,640px)] rounded-2xl p-3"
+                    >
+                        <div v-if="!cargado" class="grid grid-cols-2 gap-2 p-1">
+                            <div
+                                v-for="n in 6"
+                                :key="n"
+                                class="h-12 animate-pulse rounded-xl bg-muted"
+                            />
+                        </div>
+                        <div
+                            v-else-if="categorias.length"
+                            class="grid grid-cols-2 gap-1"
+                        >
+                            <Link
+                                v-for="categoria in categorias"
+                                :key="categoria.slug"
+                                :href="urls.categoria(categoria.slug)"
+                                class="group flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-brand-green-soft"
+                                @click="menuCategorias = false"
+                            >
+                                <span
+                                    class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface"
+                                >
+                                    <img
+                                        v-if="categoria.imagen"
+                                        :src="categoria.imagen"
+                                        alt=""
+                                        class="size-full object-cover"
+                                        loading="lazy"
+                                        decoding="async"
+                                    />
+                                    <Store
+                                        v-else
+                                        class="size-4 text-brand-green-strong"
+                                    />
+                                </span>
+                                <span class="min-w-0">
+                                    <span
+                                        class="block truncate text-sm font-semibold"
+                                        >{{ categoria.nombre }}</span
+                                    >
+                                    <span class="text-xs text-muted-foreground"
+                                        >{{ categoria.total }}
+                                        {{
+                                            categoria.total === 1
+                                                ? 'producto'
+                                                : 'productos'
+                                        }}</span
+                                    >
+                                </span>
+                            </Link>
+                        </div>
+                        <p v-else class="p-3 text-sm text-muted-foreground">
+                            Aún no hay categorías con productos publicados.
+                        </p>
+                        <div class="mt-2 border-t pt-2">
+                            <Link
+                                :href="urls.catalogo"
+                                class="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-brand-green-strong hover:bg-muted"
+                                @click="menuCategorias = false"
+                            >
+                                Ver todo el catálogo
+                                <span aria-hidden="true">→</span>
+                            </Link>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+
+                <Link
+                    :href="urls.catalogo"
+                    class="inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold transition-colors hover:bg-muted"
+                    :class="
+                        rutaActual === urls.catalogo
+                            ? 'text-brand-green-strong'
+                            : 'text-foreground'
+                    "
+                >
+                    Catálogo
+                </Link>
+            </nav>
+
+            <!-- Buscador de escritorio -->
+            <div class="hidden flex-1 justify-center md:flex">
+                <div class="w-full max-w-xl">
+                    <SearchBox :valor-inicial="busquedaActual" />
+                </div>
+            </div>
+
+            <div class="ml-auto flex items-center gap-1 sm:gap-2 md:ml-0">
+                <button
+                    type="button"
+                    class="inline-flex size-11 items-center justify-center rounded-full text-foreground hover:bg-muted md:hidden"
+                    :aria-label="buscadorMovil ? 'Cerrar buscador' : 'Buscar'"
+                    :aria-expanded="buscadorMovil"
+                    @click="buscadorMovil = !buscadorMovil"
+                >
+                    <X v-if="buscadorMovil" class="size-5" />
+                    <Search v-else class="size-5" />
+                </button>
+
+                <!-- Cuenta (escritorio) -->
+                <DropdownMenu v-if="usuario">
+                    <DropdownMenuTrigger as-child>
+                        <button
+                            type="button"
+                            class="hidden h-11 items-center gap-2 rounded-full pr-3 pl-1.5 text-sm font-semibold hover:bg-muted lg:inline-flex"
+                        >
+                            <span
+                                class="flex size-8 items-center justify-center rounded-full bg-brand-gradient text-xs font-bold text-brand-ink"
+                                >{{ iniciales(usuario.name) }}</span
+                            >
+                            <span class="max-w-28 truncate">{{
+                                usuario.name.split(' ')[0]
+                            }}</span>
+                            <ChevronDown class="size-4 text-muted-foreground" />
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" class="w-60 rounded-xl">
+                        <DropdownMenuLabel class="font-normal">
+                            <p class="truncate text-sm font-semibold">
+                                {{ usuario.name }}
+                            </p>
+                            <p
+                                v-if="usuario.email"
+                                class="truncate text-xs text-muted-foreground"
+                            >
+                                {{ usuario.email }}
+                            </p>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem as-child>
+                            <Link
+                                :href="urls.misPedidos"
+                                class="cursor-pointer"
+                            >
+                                <Package class="size-4" /> Mis pedidos
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem as-child>
+                            <Link
+                                :href="urls.direcciones"
+                                class="cursor-pointer"
+                            >
+                                <MapPin class="size-4" /> Mis direcciones
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem v-if="esPersonal" as-child>
+                            <Link :href="urls.admin" class="cursor-pointer">
+                                <LayoutDashboard class="size-4" /> Panel
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem as-child>
+                            <Link
+                                :href="urls.logout"
+                                method="post"
+                                as="button"
+                                class="w-full cursor-pointer"
+                            >
+                                <LogOut class="size-4" /> Cerrar sesión
+                            </Link>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Link
+                    v-else
+                    :href="urls.login"
+                    class="hidden h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold hover:bg-muted lg:inline-flex"
+                >
+                    <UserRound class="size-[18px]" />
+                    Entrar
+                </Link>
+
+                <!-- Carrito -->
+                <Link
+                    :href="urls.carrito"
+                    class="relative inline-flex h-11 items-center gap-2 rounded-full bg-brand-ink pr-4 pl-3.5 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-brand-deep active:scale-95 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+                    :aria-label="`Carrito, ${cantidad} ${cantidad === 1 ? 'artículo' : 'artículos'}`"
+                >
+                    <ShoppingBag class="size-[18px]" aria-hidden="true" />
+                    <span class="hidden sm:inline">Carrito</span>
+                    <span
+                        class="inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-xs leading-none font-bold"
+                        :class="[
+                            cantidad > 0
+                                ? 'bg-primary text-primary-foreground dark:bg-brand-ink dark:text-white'
+                                : 'bg-white/15 text-white dark:bg-black/15 dark:text-primary-foreground',
+                            rebote ? 'animate-in duration-300 zoom-in-50' : '',
+                        ]"
+                        aria-hidden="true"
+                        @animationend="rebote = false"
+                        >{{ cantidad > 99 ? '99+' : cantidad }}</span
+                    >
+                </Link>
+            </div>
         </div>
-      </Transition>
-    </div>
-  </header>
+
+        <!-- Buscador móvil desplegable -->
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 -translate-y-2"
+            leave-active-class="transition duration-150 ease-in"
+            leave-to-class="opacity-0 -translate-y-2"
+        >
+            <div v-if="buscadorMovil" class="border-t px-4 py-3 md:hidden">
+                <SearchBox
+                    :valor-inicial="busquedaActual"
+                    autofocus
+                    variante="panel"
+                    @navegar="buscadorMovil = false"
+                />
+            </div>
+        </Transition>
+
+        <!-- Menú lateral móvil -->
+        <Sheet v-model:open="menuMovil">
+            <SheetContent
+                side="left"
+                class="w-[88vw] max-w-sm gap-0 overflow-y-auto p-0 [&>button:last-child]:text-white [&>button:last-child]:opacity-90"
+            >
+                <SheetHeader
+                    class="relative overflow-hidden bg-brand-deep-pattern px-5 pt-6 pb-5 text-left"
+                >
+                    <img
+                        :src="logo"
+                        alt="Mr Lana"
+                        width="508"
+                        height="192"
+                        class="h-9 w-auto self-start"
+                        loading="lazy"
+                        decoding="async"
+                    />
+                    <SheetTitle class="sr-only">Menú principal</SheetTitle>
+                    <SheetDescription class="mt-3 text-sm text-white/80">
+                        <template v-if="usuario"
+                            >Hola, {{ usuario.name.split(' ')[0] }}</template
+                        >
+                        <template v-else>Bienvenido a la tienda</template>
+                    </SheetDescription>
+                </SheetHeader>
+
+                <nav class="flex flex-col gap-1 p-3" aria-label="Menú móvil">
+                    <Link
+                        :href="urls.catalogo"
+                        class="flex h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold hover:bg-muted"
+                        @click="menuMovil = false"
+                    >
+                        <Store class="size-5 text-brand-green-strong" />
+                        Todo el catálogo
+                    </Link>
+                    <Link
+                        :href="urls.carrito"
+                        class="flex h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold hover:bg-muted"
+                        @click="menuMovil = false"
+                    >
+                        <ShoppingBag class="size-5 text-brand-green-strong" />
+                        Mi carrito
+                        <span
+                            v-if="cantidad > 0"
+                            class="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground"
+                            >{{ cantidad }}</span
+                        >
+                    </Link>
+                </nav>
+
+                <div class="px-3 pb-2">
+                    <p
+                        class="px-3 pt-2 pb-1 text-[11px] font-bold tracking-[0.12em] text-muted-foreground uppercase"
+                    >
+                        Categorías
+                    </p>
+                    <div v-if="!cargado" class="space-y-2 p-2">
+                        <div
+                            v-for="n in 5"
+                            :key="n"
+                            class="h-10 animate-pulse rounded-lg bg-muted"
+                        />
+                    </div>
+                    <ul v-else class="flex flex-col">
+                        <li
+                            v-for="categoria in categorias"
+                            :key="categoria.slug"
+                        >
+                            <Link
+                                :href="urls.categoria(categoria.slug)"
+                                class="flex h-11 items-center justify-between rounded-xl px-3 text-sm font-medium hover:bg-muted"
+                                @click="menuMovil = false"
+                            >
+                                {{ categoria.nombre }}
+                                <span class="text-xs text-muted-foreground">{{
+                                    categoria.total
+                                }}</span>
+                            </Link>
+                        </li>
+                        <li
+                            v-if="!categorias.length"
+                            class="px-3 py-2 text-sm text-muted-foreground"
+                        >
+                            Pronto verás aquí nuestras categorías.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="mt-auto border-t p-3">
+                    <template v-if="usuario">
+                        <Link
+                            :href="urls.misPedidos"
+                            class="flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-muted"
+                            @click="menuMovil = false"
+                        >
+                            <Package class="size-4" /> Mis pedidos
+                        </Link>
+                        <Link
+                            :href="urls.direcciones"
+                            class="flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-muted"
+                            @click="menuMovil = false"
+                        >
+                            <MapPin class="size-4" /> Mis direcciones
+                        </Link>
+                        <Link
+                            v-if="esPersonal"
+                            :href="urls.admin"
+                            class="flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-muted"
+                            @click="menuMovil = false"
+                        >
+                            <LayoutDashboard class="size-4" /> Panel
+                        </Link>
+                        <Link
+                            :href="urls.logout"
+                            method="post"
+                            as="button"
+                            class="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-muted"
+                            @click="menuMovil = false"
+                        >
+                            <LogOut class="size-4" /> Cerrar sesión
+                        </Link>
+                    </template>
+                    <div v-else class="grid grid-cols-2 gap-2">
+                        <Link
+                            :href="urls.login"
+                            class="inline-flex h-11 items-center justify-center gap-2 rounded-full border text-sm font-semibold hover:bg-muted"
+                            @click="menuMovil = false"
+                        >
+                            <LogIn class="size-4" /> Entrar
+                        </Link>
+                        <Link
+                            :href="urls.registro"
+                            class="inline-flex h-11 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                            @click="menuMovil = false"
+                        >
+                            Crear cuenta
+                        </Link>
+                    </div>
+                </div>
+            </SheetContent>
+        </Sheet>
+    </header>
 </template>

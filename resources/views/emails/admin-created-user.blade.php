@@ -1,51 +1,22 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Acceso a tu cuenta</title>
-</head>
-<body style="font-family: Arial, Helvetica, sans-serif; background:#f5f7fb; margin:0; padding:24px;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:18px; overflow:hidden; border:1px solid #e5e7eb;">
-        <tr>
-            <td style="background:#111827; color:#ffffff; padding:24px 28px;">
-                <h1 style="margin:0; font-size:22px;">Tu cuenta ha sido creada</h1>
-                <p style="margin:8px 0 0; color:#d1d5db;">Ya puedes acceder a la plataforma.</p>
-            </td>
-        </tr>
+@extends('emails.layout')
 
-        <tr>
-            <td style="padding:28px;">
-                <p style="margin:0 0 16px; color:#111827;">Hola <strong>{{ $userName }}</strong>,</p>
+@section('titulo', 'Activa tu cuenta')
+@section('preheader', 'Define tu contraseña para entrar a tu cuenta.')
+@section('encabezado', 'Tu cuenta está lista')
+@section('subtitulo', 'Sólo falta que definas tu contraseña.')
 
-                <p style="margin:0 0 16px; color:#374151;">
-                    Un administrador creó tu cuenta con el rol:
-                    <strong>{{ ucfirst($role) }}</strong>.
-                </p>
+@section('contenido')
+    <p style="margin:0 0 14px;">Hola <strong>{{ $userName }}</strong>,</p>
+    <p style="margin:0 0 14px;">
+        Un administrador creó tu cuenta con el rol <strong>{{ $rolLabel }}</strong>.
+        Tu usuario es <strong>{{ $email }}</strong>.
+    </p>
+    <p style="margin:0;">Por seguridad no enviamos contraseñas por correo. Usa este botón para crear la tuya:</p>
 
-                <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:14px; padding:18px; margin-bottom:18px;">
-                    <p style="margin:0 0 10px; color:#6b7280; font-size:13px;">Correo</p>
-                    <p style="margin:0 0 16px; color:#111827; font-weight:bold;">{{ $email }}</p>
+    @if ($resetUrl)
+        @include('emails.partials.boton', ['url' => $resetUrl, 'etiqueta' => 'Definir mi contraseña'])
+        <p style="margin:8px 0 0; font-size:13px; color:#6B7280;">El enlace caduca por seguridad. Si expira, usa "¿Olvidaste tu contraseña?" en la pantalla de acceso.</p>
+    @endif
 
-                    <p style="margin:0 0 10px; color:#6b7280; font-size:13px;">Contraseña temporal</p>
-                    <p style="margin:0; color:#111827; font-weight:bold;">{{ $temporaryPassword }}</p>
-                </div>
-
-                <p style="margin:0 0 18px; color:#374151;">
-                    Por seguridad, te recomendamos cambiar tu contraseña en cuanto ingreses.
-                    También puedes hacerlo directamente desde este enlace:
-                </p>
-
-                <p style="margin:0 0 24px;">
-                    <a href="{{ $resetUrl }}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 18px; border-radius:12px; font-weight:bold;">
-                        Cambiar contraseña
-                    </a>
-                </p>
-
-                <p style="margin:0; color:#6b7280; font-size:13px;">
-                    Si no esperabas este correo, ignóralo o contacta al administrador del sistema.
-                </p>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
+    <p style="margin:18px 0 0; font-size:13px; color:#6B7280;">Si no esperabas este correo, ignóralo o contacta a la tienda.</p>
+@endsection

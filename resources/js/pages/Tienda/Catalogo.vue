@@ -1,858 +1,708 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Head, Link, router } from '@inertiajs/vue3'
-import PublicLayout from '@/layouts/PublicLayout.vue'
-import heroImg from '@/img/hero-tienda.jpeg'
+import { Link, router } from '@inertiajs/vue3';
+import { useDebounceFn } from '@vueuse/core';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Search,
+    SlidersHorizontal,
+    X,
+} from 'lucide-vue-next';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import CatalogFilters from '@/components/public/CatalogFilters.vue';
+import ProductCard from '@/components/public/ProductCard.vue';
+import ProductCardSkeleton from '@/components/public/ProductCardSkeleton.vue';
+import { moneda, urls } from '@/components/public/tienda';
+import type {
+    CategoriaPublica,
+    FiltrosCatalogo,
+    MarcaPublica,
+    ProductoTarjeta,
+} from '@/components/public/types';
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import {
+    NativeSelect,
+    NativeSelectOption,
+} from '@/components/ui/native-select';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
+import mascota from '@/img/mascota-mr-lana.webp';
+import PublicLayout from '@/layouts/PublicLayout.vue';
 
-interface Categoria {
-  id: number
-  nombre: string
-  slug: string
-  imagen?: string | null
-}
-
-interface Marca {
-  id: number
-  nombre: string
-  slug?: string
-}
-
-interface OfertaInfo {
-  id: number
-  nombre: string
-  tipo: string
-  valor: number
-}
-
-interface Producto {
-  id: number
-  nombre: string
-  slug: string
-  sku: string
-  descripcion?: string | null
-  precio: number
-  precio_original?: number | null
-  precio_comparacion?: number | null
-  precio_final?: number | null
-  descuento_oferta?: number
-  tiene_oferta?: boolean
-  oferta?: OfertaInfo | null
-  stock: number
-  imagen_principal?: string | null
-  destacado?: boolean
-  categoria_id?: number | null
-  categoria?: Categoria | null
-  marca?: Marca | null
+interface EnlacePaginacion {
+    url: string | null;
+    label: string;
+    active: boolean;
 }
 
 const props = defineProps<{
-  categorias: Categoria[]
-  productos: Producto[]
-  filtros?: {
-    buscar?: string | null
-    categoria?: string | number | null
-  }
-}>()
+    productos: {
+        data: ProductoTarjeta[];
+        meta: {
+            pagina_actual: number;
+            ultima_pagina: number;
+            por_pagina: number;
+            total: number;
+            desde: number | null;
+            hasta: number | null;
+        };
+        links: EnlacePaginacion[];
+    };
+    filtros: FiltrosCatalogo;
+    categorias: CategoriaPublica[];
+    marcas: MarcaPublica[];
+    rangoPrecio: { min: number; max: number };
+    categoriaActual: {
+        nombre: string;
+        slug: string;
+        descripcion: string | null;
+    } | null;
+}>();
 
-const selectedCategoryId = ref<number | null>(
-  props.filtros?.categoria ? Number(props.filtros.categoria) : null,
-)
-const selectedBrandId = ref<number | null>(null)
-const searchText = ref(props.filtros?.buscar ?? '')
-const sortBy = ref<
-  'relevancia' | 'precio_asc' | 'precio_desc' | 'nombre' | 'ofertas'
->('relevancia')
+const ORDENES = [
+    { valor: 'relevancia', etiqueta: 'Relevancia' },
+    { valor: 'nuevos', etiqueta: 'Más nuevos' },
+    { valor: 'precio_asc', etiqueta: 'Precio: menor a mayor' },
+    { valor: 'precio_desc', etiqueta: 'Precio: mayor a menor' },
+    { valor: 'nombre', etiqueta: 'Nombre (A-Z)' },
+];
 
-const priceMin = ref<string>('')
-const priceMax = ref<string>('')
-const onlyOffers = ref(false)
-const pricePreset = ref<'all' | '0-500' | '500-1000' | '1000-3000' | '3000+' >('all')
+const panelMovil = ref(false);
+const cargando = ref(false);
+const busqueda = ref(props.filtros.q ?? '');
+const orden = ref(props.filtros.orden);
+const resultados = ref<HTMLElement | null>(null);
 
-const animatingProductId = ref<number | null>(null)
-const toast = ref<{ show: boolean; text: string }>({
-  show: false,
-  text: '',
-})
-
-const categoriasConConteo = computed(() => {
-  return (props.categorias ?? []).map((categoria) => {
-    const count = (props.productos ?? []).filter((producto) => {
-      const productCategoryId = producto.categoria?.id ?? producto.categoria_id ?? null
-      return productCategoryId === categoria.id
-    }).length
-
-    return {
-      ...categoria,
-      count,
-    }
-  })
-})
-
-const marcasDisponibles = computed(() => {
-  const map = new Map<number, Marca>()
-
-  for (const producto of props.productos ?? []) {
-    if (producto.marca?.id && producto.marca?.nombre) {
-      map.set(producto.marca.id, {
-        id: producto.marca.id,
-        nombre: producto.marca.nombre,
-        slug: producto.marca.slug,
-      })
-    }
-  }
-
-  return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre))
-})
-
-const filteredProducts = computed(() => {
-  const term = searchText.value.trim().toLowerCase()
-
-  let items = [...(props.productos ?? [])].filter((producto) => Number(producto.stock) > 0)
-
-  if (selectedCategoryId.value) {
-    items = items.filter((producto) => {
-      const productCategoryId = producto.categoria?.id ?? producto.categoria_id ?? null
-      return productCategoryId === selectedCategoryId.value
-    })
-  }
-
-  if (selectedBrandId.value) {
-    items = items.filter((producto) => {
-      return (producto.marca?.id ?? null) === selectedBrandId.value
-    })
-  }
-
-  if (term) {
-    items = items.filter((producto) => {
-      const searchable = [
-        producto.nombre,
-        producto.sku,
-        producto.descripcion,
-        producto.categoria?.nombre,
-        producto.marca?.nombre,
-        producto.oferta?.nombre,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return searchable.includes(term)
-    })
-  }
-
-  if (onlyOffers.value) {
-    items = items.filter((producto) => !!producto.tiene_oferta)
-  }
-
-  if (pricePreset.value !== 'all') {
-    items = items.filter((producto) => {
-      const precio = Number(producto.precio)
-
-      if (pricePreset.value === '0-500') return precio >= 0 && precio <= 500
-      if (pricePreset.value === '500-1000') return precio > 500 && precio <= 1000
-      if (pricePreset.value === '1000-3000') return precio > 1000 && precio <= 3000
-      if (pricePreset.value === '3000+') return precio > 3000
-
-      return true
-    })
-  }
-
-  const min = priceMin.value !== '' ? Number(priceMin.value) : null
-  const max = priceMax.value !== '' ? Number(priceMax.value) : null
-
-  if (min !== null && !Number.isNaN(min)) {
-    items = items.filter((producto) => Number(producto.precio) >= min)
-  }
-
-  if (max !== null && !Number.isNaN(max)) {
-    items = items.filter((producto) => Number(producto.precio) <= max)
-  }
-
-  if (sortBy.value === 'precio_asc') {
-    items.sort((a, b) => Number(a.precio) - Number(b.precio))
-  } else if (sortBy.value === 'precio_desc') {
-    items.sort((a, b) => Number(b.precio) - Number(a.precio))
-  } else if (sortBy.value === 'nombre') {
-    items.sort((a, b) => a.nombre.localeCompare(b.nombre))
-  } else if (sortBy.value === 'ofertas') {
-    items.sort((a, b) => Number(!!b.tiene_oferta) - Number(!!a.tiene_oferta))
-  }
-
-  return items
-})
-
-const resumenCatalogo = computed(() => {
-  const total = filteredProducts.value.length
-  const conOferta = filteredProducts.value.filter((p) => p.tiene_oferta).length
-
-  const precios = filteredProducts.value.map((p) => Number(p.precio)).filter((p) => !Number.isNaN(p))
-  const minimo = precios.length ? Math.min(...precios) : 0
-  const maximo = precios.length ? Math.max(...precios) : 0
-
-  return {
-    total,
-    conOferta,
-    minimo,
-    maximo,
-  }
-})
-
-function formatPrice(value: number | string | null | undefined) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    maximumFractionDigits: 2,
-  }).format(Number(value ?? 0))
-}
-
-function setCategory(categoryId: number | null) {
-  selectedCategoryId.value = categoryId
-}
-
-function setBrand(brandId: number | null) {
-  selectedBrandId.value = brandId
-}
-
-function resetFilters() {
-  selectedCategoryId.value = null
-  selectedBrandId.value = null
-  searchText.value = ''
-  sortBy.value = 'relevancia'
-  priceMin.value = ''
-  priceMax.value = ''
-  onlyOffers.value = false
-  pricePreset.value = 'all'
-}
-
-function showToast(text: string) {
-  toast.value = { show: true, text }
-
-  window.clearTimeout((showToast as typeof showToast & { timer?: number }).timer)
-  ;(showToast as typeof showToast & { timer?: number }).timer = window.setTimeout(() => {
-    toast.value.show = false
-  }, 2200)
-}
-
-function triggerBubble(productId: number) {
-  animatingProductId.value = productId
-
-  window.setTimeout(() => {
-    if (animatingProductId.value === productId) {
-      animatingProductId.value = null
-    }
-  }, 750)
-}
-
-function addToCart(producto: Producto) {
-  triggerBubble(producto.id)
-
-  router.post(
-    '/carrito/agregar',
-    {
-      producto_id: producto.id,
-      cantidad: 1,
+watch(
+    () => props.filtros,
+    (f) => {
+        busqueda.value = f.q ?? '';
+        orden.value = f.orden;
     },
-    {
-      preserveScroll: true,
-      onSuccess: () => {
-        showToast(`"${producto.nombre}" se agregó al carrito`)
-      },
-      onError: () => {
-        showToast('No se pudo agregar el producto al carrito')
-      },
-    },
-  )
+);
+
+const titulo = computed(() => {
+    if (props.filtros.q) {
+        return `Resultados para “${props.filtros.q}”`;
+    }
+
+    return props.categoriaActual?.nombre ?? 'Catálogo';
+});
+
+const nombreDe = (
+    lista: { slug: string; nombre: string }[],
+    slug: string | null,
+) => lista.find((x) => x.slug === slug)?.nombre ?? slug ?? '';
+
+const chips = computed(() => {
+    const f = props.filtros;
+    const lista: {
+        clave: keyof FiltrosCatalogo | 'precio';
+        etiqueta: string;
+    }[] = [];
+
+    if (f.q) {
+        lista.push({ clave: 'q', etiqueta: `“${f.q}”` });
+    }
+
+    if (f.categoria) {
+        lista.push({
+            clave: 'categoria',
+            etiqueta: nombreDe(props.categorias, f.categoria),
+        });
+    }
+
+    if (f.marca) {
+        lista.push({
+            clave: 'marca',
+            etiqueta: nombreDe(props.marcas, f.marca),
+        });
+    }
+
+    if (f.disponibilidad) {
+        const etiquetas = {
+            en_stock: 'En existencia',
+            bajo_pedido: 'Bajo pedido',
+            agotado: 'Agotado',
+        } as const;
+        lista.push({
+            clave: 'disponibilidad',
+            etiqueta: etiquetas[f.disponibilidad],
+        });
+    }
+
+    if (f.precio_min !== null || f.precio_max !== null) {
+        const desde =
+            f.precio_min !== null
+                ? moneda(f.precio_min)
+                : moneda(props.rangoPrecio.min);
+        const hasta =
+            f.precio_max !== null
+                ? moneda(f.precio_max)
+                : moneda(props.rangoPrecio.max);
+        lista.push({ clave: 'precio', etiqueta: `${desde} – ${hasta}` });
+    }
+
+    return lista;
+});
+
+const filtrosActivos = computed(
+    () => chips.value.filter((c) => c.clave !== 'q').length,
+);
+
+function parametros(f: FiltrosCatalogo): Record<string, string | number> {
+    const salida: Record<string, string | number> = {};
+
+    for (const [clave, valor] of Object.entries(f)) {
+        if (
+            valor === null ||
+            valor === '' ||
+            (clave === 'orden' && valor === 'relevancia')
+        ) {
+            continue;
+        }
+
+        salida[clave] = valor as string | number;
+    }
+
+    return salida;
 }
+
+function aplicar(
+    parcial: Partial<FiltrosCatalogo>,
+    opciones: { pagina?: number } = {},
+) {
+    const siguiente: FiltrosCatalogo = { ...props.filtros, ...parcial };
+    const datos = parametros(siguiente);
+
+    if (opciones.pagina && opciones.pagina > 1) {
+        datos.page = opciones.pagina;
+    }
+
+    router.get(urls.catalogo, datos, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['productos', 'filtros', 'categoriaActual', 'seo'],
+        onSuccess: () => {
+            if (opciones.pagina) {
+                resultados.value?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                });
+            }
+        },
+    });
+}
+
+function quitar(clave: keyof FiltrosCatalogo | 'precio') {
+    if (clave === 'precio') {
+        aplicar({ precio_min: null, precio_max: null });
+
+        return;
+    }
+
+    aplicar({ [clave]: null } as Partial<FiltrosCatalogo>);
+}
+
+function limpiarTodo() {
+    router.get(urls.catalogo, {}, { preserveScroll: true, replace: true });
+}
+
+const buscarConRetraso = useDebounceFn((valor: string) => {
+    const q = valor.trim();
+
+    if (q !== (props.filtros.q ?? '')) {
+        aplicar({ q: q || null });
+    }
+}, 450);
+
+watch(busqueda, (valor) => buscarConRetraso(valor));
+watch(orden, (valor) => {
+    if (valor !== props.filtros.orden) {
+        aplicar({ orden: valor });
+    }
+});
+
+function irAPagina(enlace: EnlacePaginacion) {
+    if (!enlace.url || enlace.active) {
+        return;
+    }
+
+    const pagina = Number(
+        new URL(enlace.url, window.location.origin).searchParams.get('page') ??
+            1,
+    );
+    aplicar({}, { pagina });
+}
+
+const paginas = computed(() =>
+    props.productos.links.filter((l) => /^\d+$|^\.\.\.$/.test(l.label.trim())),
+);
+const anterior = computed(() => props.productos.links[0] ?? null);
+const siguiente = computed(
+    () => props.productos.links[props.productos.links.length - 1] ?? null,
+);
+
+let quitarInicio: (() => void) | null = null;
+let quitarFin: (() => void) | null = null;
+
+onMounted(() => {
+    quitarInicio = router.on('start', (evento) => {
+        const url = evento.detail.visit.url;
+
+        if (
+            url.pathname === urls.catalogo &&
+            evento.detail.visit.method === 'get'
+        ) {
+            cargando.value = true;
+        }
+    });
+    quitarFin = router.on('finish', () => {
+        cargando.value = false;
+    });
+});
+
+onBeforeUnmount(() => {
+    quitarInicio?.();
+    quitarFin?.();
+});
 </script>
 
 <template>
-  <PublicLayout>
-    <Head title="Catálogo de productos" />
+    <PublicLayout>
+        <!-- Encabezado -->
+        <section
+            class="relative overflow-hidden bg-brand-deep-pattern text-white"
+        >
+            <div
+                class="pointer-events-none absolute -top-32 -right-24 size-96 rounded-full bg-brand-teal/20 blur-3xl"
+                aria-hidden="true"
+            />
+            <div
+                class="relative mx-auto w-full max-w-7xl px-4 pt-6 pb-10 sm:px-6 sm:pb-12 lg:px-8"
+            >
+                <Breadcrumb>
+                    <BreadcrumbList class="text-white/70">
+                        <BreadcrumbItem>
+                            <BreadcrumbLink as-child class="hover:text-white">
+                                <Link :href="urls.home">Inicio</Link>
+                            </BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator class="text-white/40" />
+                        <BreadcrumbItem>
+                            <BreadcrumbLink
+                                v-if="categoriaActual || filtros.q"
+                                as-child
+                                class="hover:text-white"
+                            >
+                                <Link :href="urls.catalogo">Catálogo</Link>
+                            </BreadcrumbLink>
+                            <BreadcrumbPage v-else class="text-white"
+                                >Catálogo</BreadcrumbPage
+                            >
+                        </BreadcrumbItem>
+                        <template v-if="categoriaActual">
+                            <BreadcrumbSeparator class="text-white/40" />
+                            <BreadcrumbItem>
+                                <BreadcrumbPage class="text-white">{{
+                                    categoriaActual.nombre
+                                }}</BreadcrumbPage>
+                            </BreadcrumbItem>
+                        </template>
+                    </BreadcrumbList>
+                </Breadcrumb>
 
-    <div class="bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)]">
-      <section class="px-4 pb-14 pt-8 md:px-8 md:pt-10">
-        <div class="mx-auto w-full max-w-[1550px]">
-          <div class="mb-8 flex flex-col gap-5 rounded-[34px] border border-neutral-200 bg-white/90 px-5 py-6 shadow-[0_20px_50px_rgba(17,20,44,0.06)] backdrop-blur md:px-7 lg:flex-row lg:items-end lg:justify-between">
-            <div class="max-w-3xl">
-
-              <h1 class="mt-4 text-3xl font-black tracking-tight text-neutral-900 md:text-5xl">
-                Encuentra justo lo que buscas
-              </h1>
-
-              <p class="mt-3 text-sm leading-7 text-neutral-600 md:text-base">
-                Explora por categoría, marca y rango de precio. Compara opciones, revisa promociones y agrega al carrito en segundos.
-              </p>
-            </div>
-
-            <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[360px]">
-              <div class="rounded-[24px] border border-neutral-200 bg-[#f8fbff] px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
-                  Resultados
-                </p>
-                <p class="mt-2 text-2xl font-black text-neutral-900">
-                  {{ resumenCatalogo.total }}
-                </p>
-              </div>
-
-              <div class="rounded-[24px] border border-neutral-200 bg-[#f8fbff] px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
-                  Rango visible
-                </p>
-                <p class="mt-2 text-sm font-black text-neutral-900">
-                  {{ formatPrice(resumenCatalogo.minimo) }} - {{ formatPrice(resumenCatalogo.maximo) }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid gap-8 xl:grid-cols-[330px_minmax(0,1fr)]">
-            <aside class="space-y-5">
-              <div class="rounded-[30px] border border-neutral-200 bg-white p-5 shadow-[0_18px_45px_rgba(17,20,44,0.06)] transition-all duration-300 hover:shadow-[0_24px_55px_rgba(17,20,44,0.08)]">
-                <h3 class="text-lg font-black text-neutral-900">
-                  Buscar
-                </h3>
-
-                <div class="mt-4 rounded-2xl border border-[var(--brand-gray)] bg-[#f8f8f8] px-4 py-3 transition-all duration-300 focus-within:border-[var(--brand-blue)] focus-within:bg-white focus-within:shadow-sm">
-                  <input
-                    v-model="searchText"
-                    type="text"
-                    placeholder="Nombre, SKU, marca..."
-                    class="w-full bg-transparent text-sm text-neutral-700 outline-none placeholder:text-neutral-400"
-                  />
-                </div>
-              </div>
-
-              <div class="rounded-[30px] border border-neutral-200 bg-white p-5 shadow-[0_18px_45px_rgba(17,20,44,0.06)] transition-all duration-300 hover:shadow-[0_24px_55px_rgba(17,20,44,0.08)]">
-                <h3 class="text-lg font-black text-neutral-900">
-                  Ordenar
-                </h3>
-
-                <select
-                  v-model="sortBy"
-                  class="mt-4 h-12 w-full rounded-2xl border border-[var(--brand-gray)] bg-white px-4 text-sm font-semibold text-neutral-700 outline-none transition-all duration-300 hover:border-[var(--brand-blue)] focus:border-[var(--brand-blue)]"
+                <div
+                    class="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
                 >
-                  <option value="relevancia">Relevancia</option>
-                  <option value="precio_asc">Precio: menor a mayor</option>
-                  <option value="precio_desc">Precio: mayor a menor</option>
-                  <option value="nombre">Nombre</option>
-                  <option value="ofertas">Primero promociones</option>
-                </select>
-              </div>
+                    <div class="max-w-2xl">
+                        <h1
+                            class="font-display text-[2rem] leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl"
+                        >
+                            {{ titulo }}
+                        </h1>
+                        <p class="mt-2 text-sm text-white/75 sm:text-base">
+                            <template v-if="productos.meta.total > 0">
+                                {{ productos.meta.total }}
+                                {{
+                                    productos.meta.total === 1
+                                        ? 'producto'
+                                        : 'productos'
+                                }}
+                                <template v-if="categoriaActual?.descripcion">
+                                    ·
+                                    {{ categoriaActual.descripcion }}</template
+                                >
+                            </template>
+                            <template v-else
+                                >Sin resultados con estos filtros</template
+                            >
+                        </p>
+                    </div>
 
-              <div class="rounded-[30px] border border-neutral-200 bg-white p-5 shadow-[0_18px_45px_rgba(17,20,44,0.06)] transition-all duration-300 hover:shadow-[0_24px_55px_rgba(17,20,44,0.08)]">
-                <div class="mb-4 flex items-center justify-between gap-3">
-                  <h3 class="text-lg font-black text-neutral-900">
-                    Categorías
-                  </h3>
-
-                  <button
-                    type="button"
-                    class="text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-blue)] transition hover:opacity-70"
-                    @click="selectedCategoryId = null"
-                  >
-                    Limpiar
-                  </button>
+                    <form
+                        class="w-full lg:max-w-md"
+                        role="search"
+                        @submit.prevent="
+                            aplicar({ q: busqueda.trim() || null })
+                        "
+                    >
+                        <label for="buscar-catalogo" class="sr-only"
+                            >Buscar en el catálogo</label
+                        >
+                        <div
+                            class="flex h-12 items-center gap-2 rounded-full bg-white/95 pr-2 pl-4 text-foreground shadow-lg ring-1 ring-white/20 focus-within:ring-4 focus-within:ring-brand-green/40 dark:bg-card"
+                        >
+                            <Search
+                                class="size-[18px] text-muted-foreground"
+                                aria-hidden="true"
+                            />
+                            <input
+                                id="buscar-catalogo"
+                                v-model="busqueda"
+                                type="search"
+                                enterkeyhint="search"
+                                autocomplete="off"
+                                placeholder="Nombre, modelo, SKU o descripción"
+                                class="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                            />
+                            <button
+                                v-if="busqueda"
+                                type="button"
+                                class="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+                                aria-label="Borrar búsqueda"
+                                @click="busqueda = ''"
+                            >
+                                <X class="size-4" />
+                            </button>
+                        </div>
+                    </form>
                 </div>
+            </div>
+        </section>
 
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="selectedCategoryId === null ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="setCategory(null)"
-                  >
-                    Todas
-                  </button>
-
-                  <button
-                    v-for="categoria in categoriasConConteo"
-                    :key="`filter-${categoria.id}`"
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="selectedCategoryId === categoria.id ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="setCategory(categoria.id)"
-                  >
-                    {{ categoria.nombre }}
-                  </button>
+        <div
+            ref="resultados"
+            class="mx-auto grid w-full max-w-7xl scroll-mt-24 gap-8 px-4 pt-6 sm:px-6 lg:grid-cols-[260px_1fr] lg:gap-10 lg:px-8 lg:pt-10"
+        >
+            <!-- Filtros de escritorio -->
+            <aside class="hidden lg:block" aria-label="Filtros">
+                <div
+                    class="sticky top-28 max-h-[calc(100svh-8rem)] overflow-y-auto pr-2 pb-6"
+                >
+                    <div class="mb-6 flex items-center justify-between">
+                        <h2 class="font-display text-xl font-bold">Filtros</h2>
+                        <button
+                            v-if="filtrosActivos > 0"
+                            type="button"
+                            class="text-sm font-semibold text-brand-green-strong hover:underline"
+                            @click="limpiarTodo"
+                        >
+                            Limpiar
+                        </button>
+                    </div>
+                    <CatalogFilters
+                        :filtros="filtros"
+                        :categorias="categorias"
+                        :marcas="marcas"
+                        :rango-precio="rangoPrecio"
+                        @cambiar="aplicar"
+                    />
                 </div>
-              </div>
-
-              <div class="rounded-[30px] border border-neutral-200 bg-white p-5 shadow-[0_18px_45px_rgba(17,20,44,0.06)] transition-all duration-300 hover:shadow-[0_24px_55px_rgba(17,20,44,0.08)]">
-                <div class="mb-4 flex items-center justify-between gap-3">
-                  <h3 class="text-lg font-black text-neutral-900">
-                    Marcas
-                  </h3>
-
-                  <button
-                    type="button"
-                    class="text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-blue)] transition hover:opacity-70"
-                    @click="setBrand(null)"
-                  >
-                    Limpiar
-                  </button>
-                </div>
-
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="selectedBrandId === null ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="setBrand(null)"
-                  >
-                    Todas
-                  </button>
-
-                  <button
-                    v-for="marca in marcasDisponibles"
-                    :key="marca.id"
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="selectedBrandId === marca.id ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="setBrand(marca.id)"
-                  >
-                    {{ marca.nombre }}
-                  </button>
-                </div>
-              </div>
-
-              <div class="rounded-[30px] border border-neutral-200 bg-white p-5 shadow-[0_18px_45px_rgba(17,20,44,0.06)] transition-all duration-300 hover:shadow-[0_24px_55px_rgba(17,20,44,0.08)]">
-                <h3 class="text-lg font-black text-neutral-900">
-                  Precio
-                </h3>
-
-                <div class="mt-4 grid grid-cols-2 gap-3">
-                  <input
-                    v-model="priceMin"
-                    type="number"
-                    min="0"
-                    placeholder="Mínimo"
-                    class="h-12 rounded-2xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 outline-none transition-all duration-300 focus:border-[var(--brand-blue)]"
-                  />
-
-                  <input
-                    v-model="priceMax"
-                    type="number"
-                    min="0"
-                    placeholder="Máximo"
-                    class="h-12 rounded-2xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 outline-none transition-all duration-300 focus:border-[var(--brand-blue)]"
-                  />
-                </div>
-
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="pricePreset === 'all' ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="pricePreset = 'all'"
-                  >
-                    Todos
-                  </button>
-
-                  <button
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="pricePreset === '0-500' ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="pricePreset = '0-500'"
-                  >
-                    $0 - $500
-                  </button>
-
-                  <button
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="pricePreset === '500-1000' ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="pricePreset = '500-1000'"
-                  >
-                    $500 - $1,000
-                  </button>
-
-                  <button
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="pricePreset === '1000-3000' ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="pricePreset = '1000-3000'"
-                  >
-                    $1,000 - $3,000
-                  </button>
-
-                  <button
-                    type="button"
-                    class="rounded-full px-4 py-2 text-sm font-black transition-all duration-300"
-                    :class="pricePreset === '3000+' ? 'bg-[#11142C] text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]'"
-                    @click="pricePreset = '3000+'"
-                  >
-                    Más de $3,000
-                  </button>
-                </div>
-              </div>
-
-              <div class="rounded-[30px] border border-neutral-200 bg-white p-5 shadow-[0_18px_45px_rgba(17,20,44,0.06)] transition-all duration-300 hover:shadow-[0_24px_55px_rgba(17,20,44,0.08)]">
-                <label class="flex items-center justify-between gap-4 rounded-[22px] border border-neutral-200 bg-[#f8fbff] px-4 py-4 transition-all duration-300 hover:border-[var(--brand-blue)]/30">
-                  <div>
-                    <p class="text-sm font-black text-neutral-900">
-                      Solo promociones
-                    </p>
-                    <p class="mt-1 text-xs text-neutral-500">
-                      Mostrar únicamente productos con oferta activa
-                    </p>
-                  </div>
-
-                  <input
-                    v-model="onlyOffers"
-                    type="checkbox"
-                    class="h-5 w-5 rounded border-neutral-300 text-[var(--brand-blue)] focus:ring-[var(--brand-blue)]"
-                  />
-                </label>
-              </div>
             </aside>
 
-            <div>
-              <div class="mb-6 flex flex-col gap-3 rounded-[30px] border border-neutral-200 bg-white p-5 shadow-[0_18px_45px_rgba(17,20,44,0.06)] md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p class="text-sm font-semibold text-neutral-500">
-                    Mostrando
-                    <span class="font-black text-neutral-900">{{ filteredProducts.length }}</span>
-                    producto<span v-if="filteredProducts.length !== 1">s</span>
-                  </p>
-
-                  <p v-if="selectedCategoryId || selectedBrandId || onlyOffers" class="mt-1 text-sm text-neutral-500">
-                    Filtros activos aplicados al catálogo
-                  </p>
-                </div>
-
-                <div class="flex flex-wrap gap-2">
-                  <span class="inline-flex items-center rounded-full bg-[var(--brand-green)]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--brand-green)]">
-                    {{ resumenCatalogo.conOferta }} con promoción
-                  </span>
-
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm font-black text-[#11142C] transition hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]"
-                    @click="resetFilters"
-                  >
-                    Restablecer
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="filteredProducts.length" class="grid gap-6 sm:grid-cols-2 2xl:grid-cols-3">
+            <div class="min-w-0">
+                <!-- Barra de herramientas -->
                 <div
-                  v-for="producto in filteredProducts"
-                  :key="producto.id"
-                  class="group [perspective:1800px]"
+                    class="sticky top-16 z-20 -mx-4 flex items-center gap-2 border-b border-border/60 bg-background/90 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none"
                 >
-                  <div
-                    class="relative h-[560px] w-full rounded-[32px] transition-transform duration-700 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]"
-                  >
-                    <article
-                      class="absolute inset-0 overflow-hidden rounded-[32px] border border-neutral-200 bg-white shadow-[0_18px_50px_rgba(17,20,44,0.08)] transition-all duration-300 [backface-visibility:hidden] group-hover:-translate-y-1 group-hover:shadow-[0_28px_70px_rgba(17,20,44,0.12)]"
+                    <button
+                        type="button"
+                        class="inline-flex h-10 items-center gap-2 rounded-full border bg-background px-4 text-sm font-semibold hover:bg-muted lg:hidden"
+                        @click="panelMovil = true"
                     >
-                      <div class="relative h-[285px] overflow-hidden bg-[var(--brand-soft)]">
-                        <img
-                          :src="producto.imagen_principal || heroImg"
-                          :alt="producto.nombre"
-                          class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.08]"
-                        />
+                        <SlidersHorizontal class="size-4" />
+                        Filtros
+                        <span
+                            v-if="filtrosActivos"
+                            class="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground"
+                            >{{ filtrosActivos }}</span
+                        >
+                    </button>
 
-                        <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,20,44,0.02)_0%,rgba(17,20,44,0.28)_100%)]" />
-
-                        <div class="absolute left-4 top-4 flex flex-wrap gap-2">
-                          <span class="rounded-full bg-white/92 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#11142C]">
-                            {{ producto.categoria?.nombre || 'Producto' }}
-                          </span>
-
-                          <span
-                            v-if="producto.tiene_oferta"
-                            class="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700"
-                          >
-                            Oferta activa
-                          </span>
-                        </div>
-
-                        <div class="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/30 bg-white/15 text-white backdrop-blur transition-all duration-300 group-hover:scale-105">
-                          ⟳
-                        </div>
-                      </div>
-
-                      <div class="flex min-h-[185px] flex-col p-5">
-                        <div>
-                            <h3 class="line-clamp-2 text-xl font-black leading-tight text-neutral-900">
-                            {{ producto.nombre }}
-                            </h3>
-                        </div>
-
-                        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-500">
-                            <span>SKU: {{ producto.sku }}</span>
-                            <span v-if="producto.marca?.nombre">• {{ producto.marca.nombre }}</span>
-                        </div>
-
-                        <p class="mt-2 line-clamp-2 text-sm leading-5 text-neutral-500">
-                            {{ producto.descripcion || 'Producto disponible en catálogo.' }}
-                        </p>
-
-                        <div class="mt-auto pt-5">
-                          <div class="flex items-end justify-between gap-3">
-                            <div>
-                              <p
-                                v-if="producto.precio_original && producto.precio_original > producto.precio"
-                                class="text-sm text-neutral-400 line-through"
-                              >
-                                {{ formatPrice(producto.precio_original) }}
-                              </p>
-                              <p
-                                v-else-if="producto.precio_comparacion && Number(producto.precio_comparacion) > Number(producto.precio)"
-                                class="text-sm text-neutral-400 line-through"
-                              >
-                                {{ formatPrice(producto.precio_comparacion) }}
-                              </p>
-
-                              <p class="text-2xl font-black text-[#11142C]">
-                                {{ formatPrice(producto.precio) }}
-                              </p>
-
-                              <p
-                                v-if="producto.tiene_oferta && producto.oferta"
-                                class="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-600"
-                              >
-                                {{ producto.oferta.nombre }}
-                              </p>
-                            </div>
-
-                            <div class="text-right">
-                              <p class="text-xs font-bold uppercase tracking-[0.16em] text-neutral-400">
-                                Stock
-                              </p>
-                              <p class="mt-1 text-sm font-black text-neutral-900">
-                                {{ producto.stock }}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div class="mt-5 grid grid-cols-2 gap-3">
-                            <Link
-                              :href="`/productos/${producto.slug}`"
-                              class="inline-flex h-12 items-center justify-center rounded-full border border-[var(--brand-blue)] px-4 text-sm font-black text-[var(--brand-blue)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--brand-blue)] hover:text-white hover:shadow-sm"
-                            >
-                              Ver detalle
-                            </Link>
-
-                            <button
-                              type="button"
-                              class="relative inline-flex h-12 items-center justify-center rounded-full bg-[#11142C] px-4 text-sm font-black text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--brand-green)] hover:text-[#11142C] hover:shadow-[0_14px_30px_rgba(125,208,60,0.20)] disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-white"
-                              :disabled="producto.stock < 1"
-                              @click="addToCart(producto)"
-                            >
-                              <span v-if="animatingProductId === producto.id" class="pointer-events-none absolute inset-0">
-                                <span class="bubble bubble-1" />
-                                <span class="bubble bubble-2" />
-                                <span class="bubble bubble-3" />
-                                <span class="bubble bubble-4" />
-                                <span class="bubble bubble-5" />
-                              </span>
-
-                              <span class="relative z-10">
-                                Agregar
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-
-                    <article
-                      class="absolute inset-0 overflow-hidden rounded-[32px] border border-neutral-200 bg-[linear-gradient(180deg,#11142C_0%,#161b3d_100%)] text-white shadow-[0_18px_50px_rgba(17,20,44,0.14)] [transform:rotateY(180deg)] [backface-visibility:hidden]"
+                    <p
+                        class="hidden text-sm text-muted-foreground lg:block"
+                        aria-live="polite"
                     >
-                      <div class="flex h-full flex-col p-6">
-                        <div class="flex items-start justify-between gap-3">
-                          <div>
-                            <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">
-                              Vista rápida
-                            </p>
-                            <h3 class="mt-2 text-2xl font-black leading-tight">
-                              {{ producto.nombre }}
-                            </h3>
-                          </div>
+                        <template v-if="productos.meta.total > 0">
+                            Mostrando {{ productos.meta.desde }}–{{
+                                productos.meta.hasta
+                            }}
+                            de
+                            {{ productos.meta.total }}
+                        </template>
+                    </p>
 
-                          <div class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white">
-                            ✦
-                          </div>
-                        </div>
-
-                        <div class="mt-6 grid gap-4">
-                          <div class="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                            <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">
-                              Precio actual
-                            </p>
-                            <p class="mt-2 text-3xl font-black">
-                              {{ formatPrice(producto.precio) }}
-                            </p>
-
-                            <p
-                              v-if="producto.precio_original && producto.precio_original > producto.precio"
-                              class="mt-1 text-sm text-white/50 line-through"
+                    <div class="ml-auto flex items-center gap-2">
+                        <label
+                            for="orden"
+                            class="hidden text-sm text-muted-foreground sm:inline"
+                            >Ordenar por</label
+                        >
+                        <NativeSelect
+                            id="orden"
+                            v-model="orden"
+                            class="h-10 rounded-full bg-background pl-4 text-sm font-medium"
+                            aria-label="Ordenar productos"
+                        >
+                            <NativeSelectOption
+                                v-for="o in ORDENES"
+                                :key="o.valor"
+                                :value="o.valor"
+                                >{{ o.etiqueta }}</NativeSelectOption
                             >
-                              {{ formatPrice(producto.precio_original) }}
-                            </p>
-                          </div>
+                        </NativeSelect>
+                    </div>
+                </div>
 
-                          <div class="grid gap-3 sm:grid-cols-2">
-                            <div class="rounded-[22px] border border-white/10 bg-white/5 p-4">
-                              <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">
-                                Categoría
-                              </p>
-                              <p class="mt-2 text-sm font-semibold">
-                                {{ producto.categoria?.nombre || 'Sin categoría' }}
-                              </p>
-                            </div>
-
-                            <div class="rounded-[22px] border border-white/10 bg-white/5 p-4">
-                              <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">
-                                Marca
-                              </p>
-                              <p class="mt-2 text-sm font-semibold">
-                                {{ producto.marca?.nombre || 'Sin marca' }}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div class="rounded-[22px] border border-white/10 bg-white/5 p-4">
-                            <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">
-                              Descripción
-                            </p>
-                            <p class="mt-2 text-sm leading-6 text-white/80">
-                              {{ producto.descripcion || 'Producto disponible para compra inmediata dentro del catálogo.' }}
-                            </p>
-                          </div>
-
-                          <div
-                            v-if="producto.tiene_oferta && producto.oferta"
-                            class="rounded-[22px] border border-emerald-400/20 bg-emerald-400/10 p-4"
-                          >
-                            <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-200/70">
-                              Promoción
-                            </p>
-                            <p class="mt-2 text-base font-black text-emerald-200">
-                              {{ producto.oferta.nombre }}
-                            </p>
-                            <p class="mt-1 text-sm text-emerald-100/80">
-                              {{ producto.oferta.tipo === 'porcentaje' ? `${producto.oferta.valor}% de descuento` : `${formatPrice(producto.oferta.valor)} de descuento` }}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div class="mt-auto grid grid-cols-2 gap-3 pt-6">
-                          <Link
-                            :href="`/productos/${producto.slug}`"
-                            class="inline-flex h-12 items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 text-sm font-black text-white transition-all duration-300 hover:bg-white hover:text-[#11142C]"
-                          >
-                            Ver detalle
-                          </Link>
-
-                          <button
+                <!-- Chips de filtros activos -->
+                <TransitionGroup
+                    v-if="chips.length"
+                    tag="ul"
+                    class="mt-4 flex flex-wrap items-center gap-2"
+                    enter-active-class="transition duration-200 ease-out"
+                    enter-from-class="opacity-0 scale-90"
+                    leave-active-class="transition duration-150 ease-in absolute"
+                    leave-to-class="opacity-0 scale-90"
+                    move-class="transition-transform duration-200"
+                    aria-label="Filtros activos"
+                >
+                    <li v-for="chip in chips" :key="chip.clave">
+                        <button
                             type="button"
-                            class="inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-green)] px-4 text-sm font-black text-[#11142C] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(125,208,60,0.28)] disabled:cursor-not-allowed disabled:bg-neutral-500 disabled:text-white"
-                            :disabled="producto.stock < 1"
-                            @click="addToCart(producto)"
-                          >
-                            Agregar
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  </div>
+                            class="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-green-soft pr-2 pl-3 text-sm font-medium text-foreground transition-colors hover:bg-brand-green/30"
+                            :aria-label="`Quitar filtro ${chip.etiqueta}`"
+                            @click="quitar(chip.clave)"
+                        >
+                            {{ chip.etiqueta }}
+                            <X class="size-3.5" aria-hidden="true" />
+                        </button>
+                    </li>
+                    <li key="limpiar">
+                        <button
+                            type="button"
+                            class="h-8 px-2 text-sm font-semibold text-brand-green-strong hover:underline"
+                            @click="limpiarTodo"
+                        >
+                            Limpiar todo
+                        </button>
+                    </li>
+                </TransitionGroup>
+
+                <!-- Resultados -->
+                <div class="mt-6" :aria-busy="cargando">
+                    <ul
+                        v-if="cargando"
+                        class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4"
+                        aria-label="Cargando productos"
+                    >
+                        <li
+                            v-for="n in Math.min(productos.data.length || 6, 9)"
+                            :key="n"
+                        >
+                            <ProductCardSkeleton />
+                        </li>
+                    </ul>
+
+                    <TransitionGroup
+                        v-else-if="productos.data.length"
+                        tag="ul"
+                        appear
+                        class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4"
+                        enter-active-class="transition duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+                        enter-from-class="opacity-0 translate-y-4"
+                    >
+                        <li
+                            v-for="(producto, indice) in productos.data"
+                            :key="producto.id"
+                            :style="{
+                                transitionDelay: `${Math.min(indice, 8) * 40}ms`,
+                            }"
+                        >
+                            <ProductCard
+                                :producto="producto"
+                                :prioridad="indice < 4"
+                            />
+                        </li>
+                    </TransitionGroup>
+
+                    <!-- Estado vacío -->
+                    <div
+                        v-else
+                        class="flex flex-col items-center rounded-3xl border border-dashed border-border bg-surface px-6 py-14 text-center"
+                    >
+                        <img
+                            :src="mascota"
+                            alt=""
+                            width="710"
+                            height="848"
+                            class="h-32 w-auto animate-float"
+                            loading="lazy"
+                            decoding="async"
+                        />
+                        <h2 class="mt-6 font-display text-2xl font-bold">
+                            No encontramos productos
+                        </h2>
+                        <p class="mt-2 max-w-md text-sm text-muted-foreground">
+                            <template v-if="chips.length">
+                                Prueba con otras palabras o quita algunos
+                                filtros para ver más resultados.
+                            </template>
+                            <template v-else>
+                                Aún no hay productos publicados. Vuelve pronto.
+                            </template>
+                        </p>
+                        <button
+                            v-if="chips.length"
+                            type="button"
+                            class="mt-6 inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                            @click="limpiarTodo"
+                        >
+                            Quitar filtros
+                        </button>
+                    </div>
+
+                    <!-- Paginación -->
+                    <nav
+                        v-if="productos.meta.ultima_pagina > 1"
+                        class="mt-12 flex flex-col items-center gap-4"
+                        aria-label="Paginación"
+                    >
+                        <ul class="flex items-center gap-1.5">
+                            <li>
+                                <button
+                                    type="button"
+                                    class="inline-flex size-10 items-center justify-center rounded-full border bg-background transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                    :disabled="!anterior?.url"
+                                    aria-label="Página anterior"
+                                    @click="anterior && irAPagina(anterior)"
+                                >
+                                    <ChevronLeft class="size-5" />
+                                </button>
+                            </li>
+                            <li
+                                v-for="(enlace, i) in paginas"
+                                :key="`${enlace.label}-${i}`"
+                            >
+                                <span
+                                    v-if="!enlace.url"
+                                    class="inline-flex size-10 items-center justify-center text-sm text-muted-foreground"
+                                    >…</span
+                                >
+                                <button
+                                    v-else
+                                    type="button"
+                                    class="inline-flex size-10 items-center justify-center rounded-full text-sm font-semibold transition-colors"
+                                    :class="
+                                        enlace.active
+                                            ? 'bg-brand-ink text-white dark:bg-primary dark:text-primary-foreground'
+                                            : 'hover:bg-muted'
+                                    "
+                                    :aria-current="
+                                        enlace.active ? 'page' : undefined
+                                    "
+                                    :aria-label="`Página ${enlace.label}`"
+                                    @click="irAPagina(enlace)"
+                                >
+                                    {{ enlace.label }}
+                                </button>
+                            </li>
+                            <li>
+                                <button
+                                    type="button"
+                                    class="inline-flex size-10 items-center justify-center rounded-full border bg-background transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                    :disabled="!siguiente?.url"
+                                    aria-label="Página siguiente"
+                                    @click="siguiente && irAPagina(siguiente)"
+                                >
+                                    <ChevronRight class="size-5" />
+                                </button>
+                            </li>
+                        </ul>
+                        <p class="text-xs text-muted-foreground">
+                            Página {{ productos.meta.pagina_actual }} de
+                            {{ productos.meta.ultima_pagina }}
+                        </p>
+                    </nav>
                 </div>
-              </div>
-
-              <div
-                v-else
-                class="rounded-[30px] border border-neutral-200 bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(17,20,44,0.06)]"
-              >
-                <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[var(--brand-blue)]/10 text-[var(--brand-blue)]">
-                  <svg viewBox="0 0 24 24" class="h-9 w-9 fill-none stroke-current" stroke-width="1.8">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
-                  </svg>
-                </div>
-
-                <h3 class="mt-5 text-2xl font-black text-neutral-900">
-                  No encontramos productos
-                </h3>
-
-                <p class="mt-2 text-neutral-500">
-                  Prueba con otra búsqueda o cambia los filtros del catálogo.
-                </p>
-
-                <button
-                  type="button"
-                  class="mt-6 inline-flex items-center justify-center rounded-full bg-[#11142C] px-6 py-3 text-sm font-black text-white transition hover:bg-[var(--brand-green)] hover:text-[#11142C]"
-                  @click="resetFilters"
-                >
-                  Restablecer filtros
-                </button>
-              </div>
             </div>
-          </div>
         </div>
-      </section>
-    </div>
 
-    <Transition
-      enter-active-class="transition duration-300 ease-out"
-      enter-from-class="translate-y-3 opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition duration-200 ease-in"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="translate-y-3 opacity-0"
-    >
-      <div
-        v-if="toast.show"
-        class="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-2xl border border-white/60 bg-white px-4 py-3 shadow-[0_16px_40px_rgba(17,20,44,0.15)]"
-      >
-        <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--brand-green)]/14 text-[var(--brand-green)]">
-          <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" />
-          </svg>
-        </div>
-        <div>
-          <p class="text-sm font-black text-neutral-900">Carrito actualizado</p>
-          <p class="text-sm text-neutral-500">{{ toast.text }}</p>
-        </div>
-      </div>
-    </Transition>
-  </PublicLayout>
+        <!-- Panel de filtros móvil -->
+        <Sheet v-model:open="panelMovil">
+            <SheetContent
+                side="bottom"
+                class="max-h-[88svh] gap-0 rounded-t-[28px] p-0"
+            >
+                <SheetHeader class="border-b px-5 py-4 text-left">
+                    <SheetTitle class="font-display text-xl"
+                        >Filtros</SheetTitle
+                    >
+                    <SheetDescription>
+                        {{ productos.meta.total }}
+                        {{
+                            productos.meta.total === 1
+                                ? 'resultado'
+                                : 'resultados'
+                        }}
+                    </SheetDescription>
+                </SheetHeader>
+                <div class="overflow-y-auto px-5 py-6">
+                    <CatalogFilters
+                        :filtros="filtros"
+                        :categorias="categorias"
+                        :marcas="marcas"
+                        :rango-precio="rangoPrecio"
+                        @cambiar="aplicar"
+                    />
+                </div>
+                <SheetFooter class="flex-row gap-2 border-t px-5 py-4">
+                    <button
+                        type="button"
+                        class="inline-flex h-12 flex-1 items-center justify-center rounded-full border text-sm font-semibold hover:bg-muted"
+                        :disabled="filtrosActivos === 0"
+                        @click="limpiarTodo"
+                    >
+                        Limpiar
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex h-12 flex-[2] items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                        @click="panelMovil = false"
+                    >
+                        Ver {{ productos.meta.total }}
+                        {{
+                            productos.meta.total === 1
+                                ? 'producto'
+                                : 'productos'
+                        }}
+                    </button>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
+    </PublicLayout>
 </template>
-
-<style scoped>
-.bubble {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  height: 10px;
-  width: 10px;
-  margin-left: -5px;
-  margin-top: -5px;
-  border-radius: 9999px;
-  opacity: 0;
-  animation: bubble-pop 0.75s ease-out forwards;
-  background: radial-gradient(circle, rgba(48,190,239,0.9) 0%, rgba(125,208,60,0.95) 100%);
-}
-
-.bubble-1 { --tx: -24px; --ty: -34px; animation-delay: 0s; }
-.bubble-2 { --tx: 28px; --ty: -30px; animation-delay: 0.04s; }
-.bubble-3 { --tx: -30px; --ty: 8px; animation-delay: 0.08s; }
-.bubble-4 { --tx: 34px; --ty: 10px; animation-delay: 0.12s; }
-.bubble-5 { --tx: 0px; --ty: -42px; animation-delay: 0.16s; }
-
-@keyframes bubble-pop {
-  0% {
-    transform: translate(0, 0) scale(0.35);
-    opacity: 0;
-  }
-  18% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--tx), var(--ty)) scale(1.05);
-    opacity: 0;
-  }
-}
-</style>

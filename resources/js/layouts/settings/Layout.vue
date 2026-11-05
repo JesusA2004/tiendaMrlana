@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import { Palette, ShieldCheck, UserRound } from 'lucide-vue-next';
 import Heading from '@/components/Heading.vue';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
@@ -12,16 +11,19 @@ import type { NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'Profile',
+        title: 'Mi perfil',
         href: editProfile(),
+        icon: UserRound,
     },
     {
-        title: 'Security',
+        title: 'Seguridad',
         href: editSecurity(),
+        icon: ShieldCheck,
     },
     {
-        title: 'Appearance',
+        title: 'Apariencia',
         href: editAppearance(),
+        icon: Palette,
     },
 ];
 
@@ -29,40 +31,44 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <div class="px-4 py-6">
+    <div class="px-4 py-6 sm:px-6">
         <Heading
-            title="Settings"
-            description="Manage your profile and account settings"
+            title="Mi cuenta"
+            description="Administra tu perfil, tu seguridad y la apariencia del sitio."
         />
 
-        <div class="flex flex-col lg:flex-row lg:space-x-12">
-            <aside class="w-full max-w-xl lg:w-48">
+        <div class="flex flex-col gap-6 lg:flex-row lg:gap-10">
+            <aside class="w-full lg:w-56 lg:shrink-0">
                 <nav
-                    class="flex flex-col space-y-1 space-x-0"
-                    aria-label="Settings"
+                    class="flex flex-wrap gap-2 lg:flex-col lg:gap-1"
+                    aria-label="Configuración de la cuenta"
                 >
-                    <Button
+                    <Link
                         v-for="item in sidebarNavItems"
                         :key="toUrl(item.href)"
-                        variant="ghost"
+                        :href="item.href"
+                        :aria-current="
+                            isCurrentOrParentUrl(item.href) ? 'page' : undefined
+                        "
                         :class="[
-                            'w-full justify-start',
-                            { 'bg-muted': isCurrentOrParentUrl(item.href) },
+                            'inline-flex h-10 items-center gap-2.5 rounded-full px-4 text-sm font-medium transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none lg:w-full',
+                            isCurrentOrParentUrl(item.href)
+                                ? 'bg-brand-green-soft font-semibold text-brand-green-strong'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         ]"
-                        as-child
                     >
-                        <Link :href="item.href">
-                            <component :is="item.icon" class="h-4 w-4" />
-                            {{ item.title }}
-                        </Link>
-                    </Button>
+                        <component
+                            :is="item.icon"
+                            class="size-4 shrink-0"
+                            aria-hidden="true"
+                        />
+                        {{ item.title }}
+                    </Link>
                 </nav>
             </aside>
 
-            <Separator class="my-6 lg:hidden" />
-
-            <div class="flex-1 md:max-w-2xl">
-                <section class="max-w-xl space-y-12">
+            <div class="min-w-0 flex-1 md:max-w-2xl">
+                <section class="space-y-6">
                     <slot />
                 </section>
             </div>

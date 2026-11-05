@@ -1,698 +1,493 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Head, Link, router } from '@inertiajs/vue3'
-import PublicLayout from '@/layouts/PublicLayout.vue'
-import heroImg from '@/img/hero-tienda.jpeg'
-import decoDots from '@/img/web-recurso-2.png'
-
-interface Categoria {
-  id: number
-  nombre: string
-  slug: string
-  imagen?: string | null
-}
-
-interface Marca {
-  id: number
-  nombre: string
-  slug?: string | null
-  logo?: string | null
-}
-
-interface OfertaInfo {
-  id: number
-  nombre: string
-  tipo: string
-  valor: number
-}
-
-interface Producto {
-  id: number
-  nombre: string
-  slug: string
-  sku: string
-  descripcion?: string | null
-  precio: number
-  precio_original?: number | null
-  precio_comparacion?: number | null
-  precio_final?: number | null
-  descuento_oferta?: number
-  tiene_oferta?: boolean
-  oferta?: OfertaInfo | null
-  stock: number
-  imagen_principal?: string | null
-  destacado?: boolean
-  categoria_id?: number | null
-  categoria?: Categoria | null
-  marca?: {
-    id: number
-    nombre: string
-    slug?: string
-    logo?: string | null
-  } | null
-}
-
-interface Banner {
-  id: number
-  titulo: string
-  descripcion?: string | null
-  imagen: string | null
-  url?: string | null
-  orden?: number | null
-}
-
-interface HeroSlide {
-  id: number
-  image: string
-  badge: string
-  title: string
-  subtitle: string
-  cta: string
-  href: string
-}
+import { Link } from '@inertiajs/vue3';
+import { ArrowRight, ArrowUpRight, Store, Truck } from 'lucide-vue-next';
+import { computed } from 'vue';
+import AvisoTarjetas from '@/components/public/AvisoTarjetas.vue';
+import BenefitsMarquee from '@/components/public/BenefitsMarquee.vue';
+import BrandHero from '@/components/public/BrandHero.vue';
+import FaqList from '@/components/public/FaqList.vue';
+import HeroCarousel from '@/components/public/HeroCarousel.vue';
+import MetodoPagoIcono from '@/components/public/MetodoPagoIcono.vue';
+import ProductRail from '@/components/public/ProductRail.vue';
+import SectionHeading from '@/components/public/SectionHeading.vue';
+import { urls, vReveal } from '@/components/public/tienda';
+import type {
+    Banner,
+    Beneficio,
+    CategoriaPublica,
+    MetodoPagoPublico,
+    PreguntaFrecuente,
+    ProductoTarjeta,
+    TiendaCompartida,
+} from '@/components/public/types';
+import mascota from '@/img/mascota-mr-lana.webp';
+import PublicLayout from '@/layouts/PublicLayout.vue';
 
 const props = defineProps<{
-  categorias: Categoria[]
-  destacados: Producto[]
-  productos?: Producto[]
-  marcas?: Marca[]
-  banners?: Banner[]
-}>()
+    banners: Banner[];
+    categorias: CategoriaPublica[];
+    destacados: ProductoTarjeta[];
+    nuevos: ProductoTarjeta[];
+    ofertas: ProductoTarjeta[];
+    coleccion: CategoriaPublica[];
+    resumen: { productos: number; categorias: number; marcas: number };
+    beneficios: Beneficio[];
+    envios: string | null;
+    metodosPago: MetodoPagoPublico[];
+    faq: PreguntaFrecuente[];
+    tienda?: TiendaCompartida | null;
+}>();
 
-const currentSlide = ref(0)
-const animatingProductId = ref<number | null>(null)
-const toast = ref<{ show: boolean; text: string }>({
-  show: false,
-  text: '',
-})
+const eslogan = computed(() => props.tienda?.eslogan ?? null);
 
-const slides = computed<HeroSlide[]>(() => {
-  const dbSlides = (props.banners ?? [])
-    .filter((banner) => !!banner.imagen)
-    .map((banner) => ({
-      id: banner.id,
-      image: banner.imagen as string,
-      badge: 'Promoción',
-      title: banner.titulo,
-      subtitle:
-        banner.descripcion ||
-        'Explora categorías, revisa productos destacados y entra al catálogo completo.',
-      cta: 'Ver productos',
-      href: '/productos',
-    }))
+const textoPagos = computed(() => {
+    const claves = props.metodosPago.map((m) => m.clave);
+    const transferencia = claves.includes('transferencia');
+    const efectivo =
+        claves.includes('efectivo_presencial') ||
+        claves.includes('efectivo_contra_entrega');
 
-  if (dbSlides.length > 0) return dbSlides
-
-  return [
-    {
-      id: 0,
-      image: heroImg,
-      badge: 'Catálogo',
-      title: 'Descubre productos con una experiencia más elegante',
-      subtitle:
-        'Un catálogo visual, rápido y claro para explorar categorías, comparar opciones y comprar mejor.',
-      cta: 'Ver productos',
-      href: '/productos',
-    },
-  ]
-})
-
-const categoriesWithCount = computed(() => {
-  const source = props.productos?.length ? props.productos : props.destacados ?? []
-
-  return (props.categorias ?? []).map((categoria) => {
-    const count = source.filter((producto) => {
-      const productCategoryId = producto.categoria?.id ?? producto.categoria_id ?? null
-      return productCategoryId === categoria.id
-    }).length
-
-    return {
-      ...categoria,
-      count,
+    if (transferencia && efectivo) {
+        return 'Paga por transferencia o en efectivo.';
     }
-  })
-})
 
-const featuredProducts = computed(() => {
-  return (props.destacados ?? []).slice(0, 8)
-})
-
-const featuredBrands = computed(() => {
-  if (props.marcas?.length) {
-    return props.marcas.slice(0, 8)
-  }
-
-  const map = new Map<number, Marca>()
-  const source = [
-    ...(props.productos ?? []),
-    ...(props.destacados ?? []),
-  ]
-
-  for (const producto of source) {
-    if (producto.marca?.id && producto.marca?.nombre) {
-      map.set(producto.marca.id, {
-        id: producto.marca.id,
-        nombre: producto.marca.nombre,
-        slug: producto.marca.slug ?? null,
-        logo: producto.marca.logo ?? null,
-      })
+    if (transferencia) {
+        return 'Paga por transferencia bancaria.';
     }
-  }
 
-  return Array.from(map.values())
-    .sort((a, b) => a.nombre.localeCompare(b.nombre))
-    .slice(0, 8)
-})
-
-let autoSlideTimer: number | null = null
-
-function startAutoSlide() {
-  stopAutoSlide()
-
-  if (slides.value.length <= 1) return
-
-  autoSlideTimer = window.setInterval(() => {
-    nextSlide()
-  }, 5000)
-}
-
-function stopAutoSlide() {
-  if (autoSlideTimer) {
-    window.clearInterval(autoSlideTimer)
-    autoSlideTimer = null
-  }
-}
-
-onMounted(() => {
-  startAutoSlide()
-})
-
-onBeforeUnmount(() => {
-  stopAutoSlide()
-})
-
-function goToSlide(index: number) {
-  currentSlide.value = index
-  startAutoSlide()
-}
-
-function nextSlide() {
-  if (!slides.value.length) return
-  currentSlide.value = (currentSlide.value + 1) % slides.value.length
-}
-
-function prevSlide() {
-  if (!slides.value.length) return
-  currentSlide.value = (currentSlide.value - 1 + slides.value.length) % slides.value.length
-}
-
-function formatPrice(value: number | string | null | undefined) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    maximumFractionDigits: 2,
-  }).format(Number(value ?? 0))
-}
-
-function showToast(text: string) {
-  toast.value = { show: true, text }
-
-  window.clearTimeout((showToast as typeof showToast & { timer?: number }).timer)
-  ;(showToast as typeof showToast & { timer?: number }).timer = window.setTimeout(() => {
-    toast.value.show = false
-  }, 2200)
-}
-
-function triggerBubble(productId: number) {
-  animatingProductId.value = productId
-
-  window.setTimeout(() => {
-    if (animatingProductId.value === productId) {
-      animatingProductId.value = null
+    if (efectivo) {
+        return 'Paga en efectivo.';
     }
-  }, 750)
-}
 
-function addToCart(producto: Producto) {
-  triggerBubble(producto.id)
+    return null;
+});
 
-  router.post(
-    '/carrito/agregar',
-    {
-      producto_id: producto.id,
-      cantidad: 1,
-    },
-    {
-      preserveScroll: true,
-      onSuccess: () => {
-        showToast(`"${producto.nombre}" se agregó al carrito`)
-      },
-      onError: () => {
-        showToast('No se pudo agregar el producto al carrito')
-      },
-    },
-  )
+// No se repiten en "Nuevos" los productos que ya aparecen en "Destacados".
+const nuevosSinRepetir = computed(() => {
+    const ids = new Set(props.destacados.map((p) => p.id));
+    const filtrados = props.nuevos.filter((p) => !ids.has(p.id));
+
+    return filtrados.length >= 4 ? filtrados : props.nuevos;
+});
+
+const enviosResumen = computed(() => {
+    if (!props.envios) {
+        return null;
+    }
+
+    const texto = props.envios.trim();
+
+    return texto.length > 420 ? `${texto.slice(0, 400).trimEnd()}…` : texto;
+});
+const enlaceEnvios = computed(
+    () =>
+        props.tienda?.enlaces?.find((e) => e.url.endsWith('/envios'))?.url ??
+        null,
+);
+const faqVisible = computed(() => props.faq.slice(0, 6));
+
+// Distribución de la colección de muebles según cuántas categorías tienen productos.
+const columnasColeccion = computed(() => {
+    const n = props.coleccion.length;
+
+    return (
+        (
+            {
+                1: 'lg:grid-cols-1',
+                2: 'lg:grid-cols-2',
+                3: 'lg:grid-cols-3',
+                4: 'lg:grid-cols-4',
+            } as Record<number, string>
+        )[n] ?? 'lg:grid-cols-3'
+    );
+});
+
+function claseColeccion(indice: number): string {
+    const n = props.coleccion.length;
+
+    if (indice !== 0) {
+        return '';
+    }
+
+    if (n === 5) {
+        return 'col-span-2 lg:col-span-1 lg:row-span-2';
+    }
+
+    return n % 2 === 1 ? 'col-span-2 lg:col-span-1' : '';
 }
 </script>
 
 <template>
-  <PublicLayout>
-    <Head title="Tienda" />
-
-    <div class="bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)]">
-      <section class="relative overflow-hidden px-4 pb-12 pt-6 md:px-8 md:pt-8">
-        <div class="mx-auto w-full max-w-[1500px]">
-          <div class="overflow-hidden rounded-[36px] border border-neutral-200 bg-white shadow-[0_28px_80px_rgba(17,20,44,0.10)]">
-            <div class="relative min-h-[440px] overflow-hidden md:min-h-[600px]">
-              <img
-                :src="slides[currentSlide].image"
-                :alt="slides[currentSlide].title"
-                class="absolute inset-0 h-full w-full object-cover transition-all duration-700"
-              />
-
-              <div class="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,20,44,0.90)_0%,rgba(17,20,44,0.58)_38%,rgba(17,20,44,0.10)_100%)]" />
-
-              <img
-                :src="decoDots"
-                alt=""
-                class="pointer-events-none absolute right-0 top-0 hidden h-full w-full object-cover opacity-10 md:block"
-              />
-
-              <div class="relative z-10 flex min-h-[440px] flex-col justify-between p-6 md:min-h-[600px] md:p-12">
-                <div class="max-w-[780px]">
-
-                  <h1 class="mt-6 max-w-[760px] text-4xl font-black leading-[0.95] text-white md:text-7xl">
-                    {{ slides[currentSlide].title }}
-                  </h1>
-
-                  <p class="mt-5 max-w-[620px] text-base leading-7 text-white/85 md:text-xl">
-                    {{ slides[currentSlide].subtitle }}
-                  </p>
-
-                  <div class="mt-8 flex flex-wrap gap-3">
-                    <Link
-                      :href="slides[currentSlide].href"
-                      class="inline-flex items-center gap-2 rounded-full bg-[var(--brand-green)] px-7 py-3.5 text-sm font-black text-[#11142C] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(125,208,60,0.28)]"
-                    >
-                      {{ slides[currentSlide].cta }}
-                    </Link>
-
-                    <a
-                      href="#catalogo-categorias"
-                      class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-7 py-3.5 text-sm font-black text-white backdrop-blur transition-all duration-300 hover:bg-white hover:text-[#11142C]"
-                    >
-                      Ver categorías
-                    </a>
-                  </div>
-                </div>
-
-                <div class="flex flex-col gap-4 pt-8 md:flex-row md:items-center md:justify-between">
-                  <div class="flex items-center gap-2">
-                    <button
-                      v-for="(slide, index) in slides"
-                      :key="slide.id"
-                      type="button"
-                      class="transition-all duration-300"
-                      :class="
-                        currentSlide === index
-                          ? 'h-3 w-10 rounded-full bg-white'
-                          : 'h-3 w-3 rounded-full bg-white/45 hover:bg-white/70'
-                      "
-                      @click="goToSlide(index)"
-                    />
-                  </div>
-
-                  <div class="flex items-center gap-3">
-                    <button
-                      type="button"
-                      class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur transition-all duration-300 hover:bg-white hover:text-[#11142C]"
-                      @click="prevSlide"
-                    >
-                      ‹
-                    </button>
-
-                    <button
-                      type="button"
-                      class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white text-[#11142C] transition-all duration-300 hover:scale-[1.04] hover:bg-[var(--brand-green)]"
-                      @click="nextSlide"
-                    >
-                      ›
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <PublicLayout>
+        <!-- Hero -->
+        <div class="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+            <HeroCarousel v-if="banners.length" :banners="banners" />
+            <BrandHero
+                v-else
+                :eslogan="eslogan"
+                :resumen="resumen"
+                :hay-categorias="categorias.length > 0"
+                :pagos="textoPagos"
+            />
         </div>
-      </section>
 
-      <section id="catalogo-categorias" class="px-4 py-14 md:px-8">
-        <div class="mx-auto w-full max-w-[1500px]">
-          <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <span class="inline-flex rounded-full bg-[var(--brand-blue)]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--brand-blue)]">
-                Categorías
-              </span>
-              <h2 class="mt-4 text-4xl font-black tracking-tight text-neutral-900 md:text-5xl">
-                Explora por categoría
-              </h2>
-              <p class="mt-3 max-w-2xl text-base leading-7 text-neutral-600">
-                Encuentra rápido la sección que buscas y entra directo al catálogo completo.
-              </p>
-            </div>
-
-            <Link
-              href="/productos"
-              class="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-6 py-3 text-sm font-black text-neutral-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]"
-            >
-              Ir al catálogo
-            </Link>
-          </div>
-
-          <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            <article
-              v-for="categoria in categoriesWithCount"
-              :key="categoria.id"
-              class="group overflow-hidden rounded-[30px] border border-neutral-200 bg-white shadow-[0_18px_45px_rgba(17,20,44,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(17,20,44,0.10)]"
-            >
-              <div class="relative h-[260px] overflow-hidden bg-[var(--brand-soft)]">
-                <img
-                  :src="categoria.imagen || heroImg"
-                  :alt="categoria.nombre"
-                  class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
-                />
-                <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,20,44,0.04)_0%,rgba(17,20,44,0.74)_100%)]" />
-                <div class="absolute left-5 top-5">
-                  <span class="rounded-full bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#11142C]">
-                    {{ categoria.count }} productos
-                  </span>
-                </div>
-                <div class="absolute inset-x-5 bottom-5 flex items-end justify-between gap-3">
-                  <div>
-                    <h3 class="text-2xl font-black text-white">
-                      {{ categoria.nombre }}
-                    </h3>
-                    <p class="mt-1 text-sm text-white/80">
-                      Disponible en catálogo
-                    </p>
-                  </div>
-
-                  <Link
-                    href="/productos"
-                    class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#11142C] transition-all duration-300 group-hover:translate-x-1 group-hover:bg-[var(--brand-green)]"
-                  >
-                    →
-                  </Link>
-                </div>
-              </div>
-            </article>
-          </div>
+        <div class="mt-8 sm:mt-12">
+            <BenefitsMarquee :beneficios="beneficios" />
         </div>
-      </section>
 
-      <section id="marcas-destacadas" class="px-4 py-14 md:px-8">
-        <div class="mx-auto w-full max-w-[1500px]">
-          <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <span class="inline-flex rounded-full bg-[var(--brand-green)]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--brand-green)]">
-                Marcas
-              </span>
-              <h2 class="mt-4 text-4xl font-black tracking-tight text-neutral-900 md:text-5xl">
-                Marcas disponibles
-              </h2>
-              <p class="mt-3 max-w-2xl text-base leading-7 text-neutral-600">
-                Revisa algunas de las marcas que forman parte del catálogo actual.
-              </p>
-            </div>
-
-            <Link
-              href="/productos"
-              class="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-6 py-3 text-sm font-black text-neutral-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]"
+        <!-- Categorías -->
+        <section
+            v-if="categorias.length"
+            class="mx-auto mt-14 w-full max-w-7xl px-4 sm:mt-20 sm:px-6 lg:px-8"
+            aria-labelledby="categorias"
+        >
+            <SectionHeading
+                id="categorias"
+                antetitulo="Explora"
+                titulo="Compra por categoría"
+                :enlace="urls.catalogo"
+                texto-enlace="Todo el catálogo"
+            />
+            <ul
+                class="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(130px,1fr))] lg:gap-4 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
             >
-              Ver catálogo
-            </Link>
-          </div>
-
-          <div
-            v-if="featuredBrands.length"
-            class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
-          >
-            <article
-              v-for="marca in featuredBrands"
-              :key="marca.id"
-              class="group rounded-[28px] border border-neutral-200 bg-white p-5 text-center shadow-[0_16px_35px_rgba(17,20,44,0.05)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--brand-blue)]/25 hover:shadow-[0_24px_45px_rgba(17,20,44,0.08)]"
-            >
-              <div class="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-[24px] bg-[var(--brand-soft)] shadow-inner">
-                <img
-                  v-if="marca.logo"
-                  :src="marca.logo"
-                  :alt="marca.nombre"
-                  class="h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.06]"
-                />
-                <span
-                  v-else
-                  class="text-xl font-black uppercase tracking-[0.12em] text-neutral-700"
+                <li
+                    v-for="(categoria, indice) in categorias"
+                    :key="categoria.id"
+                    v-reveal="(indice % 6) * 60"
+                    class="w-[38%] shrink-0 snap-start min-[430px]:w-[30%] sm:w-[22%] lg:w-auto"
                 >
-                  {{ marca.nombre.slice(0, 2) }}
-                </span>
-              </div>
+                    <Link
+                        :href="urls.categoria(categoria.slug)"
+                        class="group flex flex-col items-center gap-3 rounded-3xl p-2 text-center focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    >
+                        <span
+                            class="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border/70 transition-[box-shadow,transform] duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_16px_30px_-16px_rgba(20,51,43,0.45)] group-hover:ring-2 group-hover:ring-brand-green motion-reduce:transform-none"
+                        >
+                            <img
+                                v-if="categoria.imagen"
+                                :src="categoria.imagen"
+                                :alt="categoria.nombre"
+                                loading="lazy"
+                                decoding="async"
+                                class="size-full object-cover transition-transform duration-500 group-hover:scale-110 motion-reduce:transition-none"
+                            />
+                            <span
+                                v-else
+                                class="flex size-full items-center justify-center bg-brand-gradient font-display text-3xl font-bold text-brand-ink/80"
+                                aria-hidden="true"
+                                >{{ categoria.nombre.charAt(0) }}</span
+                            >
+                        </span>
+                        <span>
+                            <span
+                                class="block text-sm leading-tight font-semibold text-foreground"
+                                >{{ categoria.nombre }}</span
+                            >
+                            <span
+                                class="mt-0.5 block text-xs text-muted-foreground"
+                                >{{ categoria.total }}
+                                {{
+                                    categoria.total === 1
+                                        ? 'producto'
+                                        : 'productos'
+                                }}</span
+                            >
+                        </span>
+                    </Link>
+                </li>
+            </ul>
+        </section>
 
-              <h3 class="mt-4 line-clamp-2 text-base font-black text-neutral-900">
-                {{ marca.nombre }}
-              </h3>
+        <!-- Destacados -->
+        <section
+            v-if="destacados.length"
+            class="mx-auto mt-16 w-full max-w-7xl px-4 sm:mt-24 sm:px-6 lg:px-8"
+            aria-labelledby="destacados"
+        >
+            <SectionHeading
+                id="destacados"
+                antetitulo="Selección"
+                titulo="Productos destacados"
+                :enlace="urls.catalogo"
+            />
+            <ProductRail
+                :productos="destacados"
+                etiqueta="Productos destacados"
+            />
+        </section>
 
-              <p class="mt-1 text-sm text-neutral-500">
-                Disponible en catálogo
-              </p>
-
-              <Link
-                href="/productos"
-                class="mt-4 inline-flex items-center justify-center rounded-full border border-neutral-200 px-4 py-2 text-sm font-black text-neutral-700 transition-all duration-300 hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/8 hover:text-[var(--brand-blue)]"
-              >
-                Ver productos
-              </Link>
-            </article>
-          </div>
-
-          <div
-            v-else
-            class="rounded-[30px] border border-neutral-200 bg-white px-6 py-12 text-center shadow-[0_18px_45px_rgba(17,20,44,0.06)]"
-          >
-            <h3 class="text-2xl font-black text-neutral-900">
-              Aún no se pudieron cargar marcas aquí
-            </h3>
-            <p class="mt-2 text-neutral-500">
-              El home necesita recibir marcas o productos desde backend para llenar esta sección.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section id="productos-destacados" class="bg-[var(--brand-soft)] px-4 py-14 md:px-8">
-        <div class="mx-auto w-full max-w-[1500px]">
-          <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <span class="inline-flex rounded-full bg-[var(--brand-green)]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--brand-green)]">
-                Destacados
-              </span>
-              <h2 class="mt-4 text-4xl font-black tracking-tight text-neutral-900 md:text-5xl">
-                Productos que merecen más visibilidad
-              </h2>
-              <p class="mt-3 max-w-2xl text-base leading-7 text-neutral-600">
-                Una selección visual de productos destacados para entrar directo a ver detalles o agregar al carrito.
-              </p>
-            </div>
-
-            <Link
-              href="/productos"
-              class="inline-flex items-center gap-2 rounded-full bg-[#11142C] px-6 py-3 text-sm font-black text-white transition-all duration-300 hover:bg-[var(--brand-green)] hover:text-[#11142C]"
-            >
-              Ver todos los productos
-            </Link>
-          </div>
-
-          <div v-if="featuredProducts.length" class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <article
-              v-for="producto in featuredProducts"
-              :key="producto.id"
-              class="group overflow-hidden rounded-[30px] border border-white/70 bg-white shadow-[0_18px_45px_rgba(17,20,44,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(17,20,44,0.10)]"
-            >
-              <div class="relative h-[260px] overflow-hidden bg-[var(--brand-soft)]">
-                <img
-                  :src="producto.imagen_principal || heroImg"
-                  :alt="producto.nombre"
-                  class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+        <!-- Ofertas vigentes -->
+        <section
+            v-if="ofertas.length"
+            class="relative mt-16 overflow-hidden bg-brand-deep-pattern py-14 text-white sm:mt-24 sm:py-20"
+            aria-labelledby="ofertas"
+        >
+            <div
+                class="pointer-events-none absolute -top-24 -right-24 size-80 rounded-full bg-brand-green/20 blur-3xl"
+                aria-hidden="true"
+            />
+            <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                <SectionHeading
+                    id="ofertas"
+                    antetitulo="Precios especiales"
+                    titulo="Ofertas vigentes"
+                    descripcion="Descuentos activos en este momento; el precio con descuento se aplica automáticamente."
+                    oscuro
                 />
-
-                <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,20,44,0.02)_0%,rgba(17,20,44,0.28)_100%)]" />
-
-                <div class="absolute left-4 top-4 flex flex-wrap gap-2">
-                  <span class="rounded-full bg-white/92 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#11142C]">
-                    Destacado
-                  </span>
-
-                  <span
-                    v-if="producto.tiene_oferta"
-                    class="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700"
-                  >
-                    Oferta
-                  </span>
-                </div>
-
-                <div class="absolute right-4 top-4 rounded-2xl border border-white/30 bg-white/15 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white backdrop-blur">
-                  {{ producto.stock > 0 ? `${producto.stock} stock` : 'Sin stock' }}
-                </div>
-              </div>
-
-              <div class="p-5">
-                <p class="text-xs font-bold uppercase tracking-[0.16em] text-neutral-400">
-                  {{ producto.categoria?.nombre || 'Producto' }}
-                </p>
-
-                <h3 class="mt-2 line-clamp-2 text-xl font-black text-neutral-900">
-                  {{ producto.nombre }}
-                </h3>
-
-                <p class="mt-2 text-sm text-neutral-500">
-                  SKU: {{ producto.sku }}
-                </p>
-
-                <div class="mt-4">
-                  <p
-                    v-if="producto.precio_original && producto.precio_original > producto.precio"
-                    class="text-sm text-neutral-400 line-through"
-                  >
-                    {{ formatPrice(producto.precio_original) }}
-                  </p>
-
-                  <p class="text-2xl font-black text-[#11142C]">
-                    {{ formatPrice(producto.precio) }}
-                  </p>
-
-                  <p
-                    v-if="producto.tiene_oferta && producto.oferta"
-                    class="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-600"
-                  >
-                    {{ producto.oferta.nombre }}
-                  </p>
-                </div>
-
-                <div class="mt-5 grid grid-cols-2 gap-3">
-                  <Link
-                    :href="`/productos/${producto.slug}`"
-                    class="inline-flex h-12 items-center justify-center rounded-full border border-[var(--brand-blue)] bg-white px-4 text-sm font-black text-[var(--brand-blue)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--brand-blue)] hover:text-white hover:shadow-sm"
-                  >
-                    Ver detalle
-                  </Link>
-
-                  <button
-                    type="button"
-                    class="relative inline-flex h-12 items-center justify-center rounded-full bg-[#11142C] px-4 text-sm font-black text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--brand-green)] hover:text-[#11142C] disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-white"
-                    :disabled="producto.stock < 1"
-                    @click="addToCart(producto)"
-                  >
-                    <span v-if="animatingProductId === producto.id" class="pointer-events-none absolute inset-0">
-                      <span class="bubble bubble-1" />
-                      <span class="bubble bubble-2" />
-                      <span class="bubble bubble-3" />
-                      <span class="bubble bubble-4" />
-                      <span class="bubble bubble-5" />
-                    </span>
-
-                    <span class="relative z-10">
-                      {{ producto.stock < 1 ? 'Sin stock' : 'Agregar' }}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </article>
-          </div>
-
-          <div
-            v-else
-            class="rounded-[30px] border border-neutral-200 bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(17,20,44,0.06)]"
-          >
-            <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[var(--brand-blue)]/10 text-[var(--brand-blue)]">
-              <svg viewBox="0 0 24 24" class="h-9 w-9 fill-none stroke-current" stroke-width="1.8">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m12 5v14M5 12h14" />
-              </svg>
+                <ProductRail :productos="ofertas" etiqueta="Ofertas vigentes" />
             </div>
+        </section>
 
-            <h3 class="mt-5 text-2xl font-black text-neutral-900">
-              Aún no hay productos destacados
-            </h3>
-
-            <p class="mt-2 text-neutral-500">
-              Puedes revisar todo el catálogo desde la página de productos.
-            </p>
-
-            <Link
-              href="/productos"
-              class="mt-6 inline-flex items-center justify-center rounded-full bg-[#11142C] px-6 py-3 text-sm font-black text-white transition hover:bg-[var(--brand-green)] hover:text-[#11142C]"
+        <!-- Colección de muebles -->
+        <section
+            v-if="coleccion.length"
+            class="mx-auto mt-16 w-full max-w-7xl px-4 sm:mt-24 sm:px-6 lg:px-8"
+            aria-labelledby="coleccion"
+        >
+            <SectionHeading
+                id="coleccion"
+                antetitulo="Colección"
+                titulo="Muebles para cada espacio"
+                descripcion="Encuentra piezas para tu sala, comedor, recámara y más."
+            />
+            <ul
+                class="grid auto-rows-[170px] grid-cols-2 gap-3 sm:auto-rows-[210px] sm:gap-4 lg:auto-rows-[240px]"
+                :class="columnasColeccion"
             >
-              Ver catálogo
-            </Link>
-          </div>
-        </div>
-      </section>
-    </div>
+                <li
+                    v-for="(categoria, indice) in coleccion"
+                    :key="categoria.id"
+                    v-reveal="indice * 70"
+                    :class="claseColeccion(indice)"
+                >
+                    <Link
+                        :href="urls.categoria(categoria.slug)"
+                        class="group relative flex size-full overflow-hidden rounded-3xl bg-brand-deep-pattern focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    >
+                        <img
+                            v-if="categoria.imagen"
+                            :src="categoria.imagen"
+                            :alt="categoria.nombre"
+                            loading="lazy"
+                            decoding="async"
+                            class="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 motion-reduce:transition-none"
+                        />
+                        <span
+                            class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
+                            aria-hidden="true"
+                        />
+                        <span
+                            class="relative mt-auto flex w-full items-end justify-between gap-3 p-4 sm:p-6"
+                        >
+                            <span class="min-w-0">
+                                <span
+                                    class="block font-display text-lg leading-tight font-bold break-words text-white sm:text-2xl"
+                                    :class="{
+                                        'lg:text-4xl':
+                                            indice === 0 &&
+                                            coleccion.length === 5,
+                                    }"
+                                    >{{ categoria.nombre }}</span
+                                >
+                                <span class="text-xs text-white/80 sm:text-sm"
+                                    >{{ categoria.total }}
+                                    {{
+                                        categoria.total === 1
+                                            ? 'producto'
+                                            : 'productos'
+                                    }}</span
+                                >
+                            </span>
+                            <span
+                                class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-brand-ink transition-transform duration-300 group-hover:rotate-45 sm:size-10"
+                                aria-hidden="true"
+                            >
+                                <ArrowUpRight class="size-5" />
+                            </span>
+                        </span>
+                    </Link>
+                </li>
+            </ul>
+        </section>
 
-    <Transition
-      enter-active-class="transition duration-300 ease-out"
-      enter-from-class="translate-y-3 opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition duration-200 ease-in"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="translate-y-3 opacity-0"
-    >
-      <div
-        v-if="toast.show"
-        class="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-2xl border border-white/60 bg-white px-4 py-3 shadow-[0_16px_40px_rgba(17,20,44,0.15)]"
-      >
-        <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--brand-green)]/14 text-[var(--brand-green)]">
-          ✓
-        </div>
-        <div>
-          <p class="text-sm font-black text-neutral-900">Carrito actualizado</p>
-          <p class="text-sm text-neutral-500">{{ toast.text }}</p>
-        </div>
-      </div>
-    </Transition>
-  </PublicLayout>
+        <!-- Nuevos -->
+        <section
+            v-if="nuevosSinRepetir.length"
+            class="mx-auto mt-16 w-full max-w-7xl px-4 sm:mt-24 sm:px-6 lg:px-8"
+            aria-labelledby="nuevos"
+        >
+            <SectionHeading
+                id="nuevos"
+                antetitulo="Recién llegados"
+                titulo="Lo más nuevo"
+                :enlace="`${urls.catalogo}?orden=nuevos`"
+            />
+            <ProductRail
+                :productos="nuevosSinRepetir"
+                etiqueta="Productos nuevos"
+            />
+        </section>
+
+        <!-- Catálogo vacío -->
+        <section
+            v-if="resumen.productos === 0"
+            class="mx-auto mt-16 w-full max-w-3xl px-4 text-center sm:mt-24 sm:px-6"
+        >
+            <img
+                :src="mascota"
+                alt=""
+                width="710"
+                height="848"
+                class="mx-auto h-40 w-auto animate-float"
+                loading="lazy"
+                decoding="async"
+            />
+            <h2 class="mt-6 font-display text-3xl font-bold">
+                Estamos preparando el catálogo
+            </h2>
+            <p class="mt-2 text-muted-foreground">
+                Muy pronto podrás ver y comprar nuestros productos aquí.
+            </p>
+        </section>
+
+        <!-- Pagos y envíos -->
+        <section
+            class="mx-auto mt-16 w-full max-w-7xl px-4 sm:mt-24 sm:px-6 lg:px-8"
+            aria-labelledby="como-comprar"
+        >
+            <SectionHeading
+                id="como-comprar"
+                antetitulo="Compra fácil"
+                titulo="Pagos y entregas"
+            />
+            <div
+                class="grid gap-4 sm:gap-6"
+                :class="{ 'lg:grid-cols-2': !!enviosResumen }"
+            >
+                <div
+                    v-reveal
+                    class="flex flex-col gap-5 rounded-3xl border border-border/70 bg-card p-5 sm:p-8"
+                >
+                    <div>
+                        <h3 class="font-display text-xl font-bold">
+                            Formas de pago
+                        </h3>
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            Elige cómo pagar al finalizar tu compra.
+                        </p>
+                    </div>
+                    <ul
+                        v-if="metodosPago.length"
+                        class="grid gap-3 sm:grid-cols-2"
+                    >
+                        <li
+                            v-for="metodo in metodosPago"
+                            :key="metodo.clave"
+                            class="flex items-center gap-3 rounded-2xl bg-surface p-3.5"
+                        >
+                            <span
+                                class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground [&>svg]:size-5"
+                            >
+                                <MetodoPagoIcono :clave="metodo.clave" />
+                            </span>
+                            <span class="text-sm font-semibold">{{
+                                metodo.nombre
+                            }}</span>
+                        </li>
+                    </ul>
+                    <AvisoTarjetas />
+                </div>
+
+                <div
+                    v-if="enviosResumen"
+                    v-reveal="100"
+                    class="relative flex flex-col overflow-hidden rounded-3xl bg-brand-green-soft p-5 sm:p-8 dark:bg-brand-green-soft"
+                >
+                    <Truck
+                        class="absolute -right-6 -bottom-6 size-40 text-brand-green/15"
+                        aria-hidden="true"
+                    />
+                    <h3 class="font-display text-xl font-bold">
+                        Envíos y entregas
+                    </h3>
+                    <p
+                        class="relative mt-3 text-sm leading-relaxed whitespace-pre-line text-foreground/80"
+                    >
+                        {{ enviosResumen }}
+                    </p>
+                    <Link
+                        v-if="enlaceEnvios"
+                        :href="enlaceEnvios"
+                        class="relative mt-5 inline-flex w-fit items-center gap-2 text-sm font-semibold text-brand-green-strong underline-offset-4 hover:underline"
+                    >
+                        Leer política completa <ArrowRight class="size-4" />
+                    </Link>
+                </div>
+            </div>
+        </section>
+
+        <!-- Preguntas frecuentes -->
+        <section
+            v-if="faqVisible.length"
+            class="mx-auto mt-16 w-full max-w-7xl px-4 sm:mt-24 sm:px-6 lg:px-8"
+            aria-labelledby="faq"
+        >
+            <div class="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
+                <div class="lg:sticky lg:top-28 lg:self-start">
+                    <SectionHeading
+                        id="faq"
+                        antetitulo="Ayuda"
+                        titulo="Preguntas frecuentes"
+                        :enlace="
+                            faq.length > faqVisible.length
+                                ? urls.preguntas
+                                : null
+                        "
+                        texto-enlace="Ver todas"
+                    />
+                    <img
+                        :src="mascota"
+                        alt=""
+                        width="710"
+                        height="848"
+                        class="hidden h-56 w-auto lg:block"
+                        loading="lazy"
+                        decoding="async"
+                    />
+                </div>
+                <div v-reveal="80">
+                    <FaqList :preguntas="faqVisible" />
+                </div>
+            </div>
+        </section>
+
+        <!-- Llamado final -->
+        <section
+            v-if="resumen.productos > 0"
+            class="mx-auto mt-16 w-full max-w-7xl px-4 sm:mt-24 sm:px-6 lg:px-8"
+        >
+            <div
+                v-reveal
+                class="relative isolate flex flex-col items-start gap-6 overflow-hidden rounded-[28px] bg-brand-gradient p-6 sm:flex-row sm:items-center sm:justify-between sm:p-10"
+            >
+                <div class="max-w-xl">
+                    <p
+                        class="font-display text-2xl leading-tight font-bold text-brand-ink sm:text-3xl"
+                    >
+                        ¿Listo para encontrar lo que buscas?
+                    </p>
+                    <p class="mt-2 text-sm text-brand-ink/80 sm:text-base">
+                        Filtra por categoría, marca, precio y disponibilidad.
+                    </p>
+                </div>
+                <Link
+                    :href="urls.catalogo"
+                    class="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-brand-ink px-7 text-[15px] font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
+                >
+                    <Store class="size-4" /> Ir al catálogo
+                </Link>
+            </div>
+        </section>
+    </PublicLayout>
 </template>
-
-<style scoped>
-.bubble {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  height: 10px;
-  width: 10px;
-  margin-left: -5px;
-  margin-top: -5px;
-  border-radius: 9999px;
-  opacity: 0;
-  animation: bubble-pop 0.75s ease-out forwards;
-  background: radial-gradient(circle, rgba(48,190,239,0.9) 0%, rgba(125,208,60,0.95) 100%);
-}
-
-.bubble-1 { --tx: -24px; --ty: -34px; animation-delay: 0s; }
-.bubble-2 { --tx: 28px; --ty: -30px; animation-delay: 0.04s; }
-.bubble-3 { --tx: -30px; --ty: 8px; animation-delay: 0.08s; }
-.bubble-4 { --tx: 34px; --ty: 10px; animation-delay: 0.12s; }
-.bubble-5 { --tx: 0px; --ty: -42px; animation-delay: 0.16s; }
-
-@keyframes bubble-pop {
-  0% {
-    transform: translate(0, 0) scale(0.35);
-    opacity: 0;
-  }
-  18% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--tx), var(--ty)) scale(1.05);
-    opacity: 0;
-  }
-}
-</style>

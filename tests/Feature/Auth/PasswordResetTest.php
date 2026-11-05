@@ -76,3 +76,24 @@ test('password cannot be reset with invalid token', function () {
 
     $response->assertSessionHasErrors('email');
 });
+
+test('el aviso y el correo de recuperación están en español', function () {
+    Notification::fake();
+    app()->setLocale('es');
+
+    $user = User::factory()->create();
+
+    $this->post(route('password.email'), ['email' => $user->email])
+        ->assertSessionHas('status', __('passwords.sent'));
+
+    expect(__('passwords.sent'))->toStartWith('Si el correo está registrado');
+
+    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
+        $correo = $notification->toMail($user);
+
+        expect($correo->subject)->toBe('Restablece tu contraseña')
+            ->and($correo->actionText)->toBe('Restablecer contraseña');
+
+        return true;
+    });
+});

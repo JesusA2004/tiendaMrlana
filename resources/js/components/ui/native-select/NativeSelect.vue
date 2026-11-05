@@ -25,7 +25,7 @@ const delegatedProps = reactiveOmit(props, "class")
 
 <template>
   <div
-    class="group/native-select relative w-fit has-[select:disabled]:opacity-50"
+    class="group/native-select relative w-fit has-[select:disabled]:opacity-50 has-[select.w-full]:w-full"
     data-slot="native-select-wrapper"
   >
     <select

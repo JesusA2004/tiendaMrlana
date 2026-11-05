@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es-MX">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#14332B" />
+        <meta name="robots" content="noindex" />
+        <title>Sin conexión · Mr Lana</title>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <style>
+            :root {
+                color-scheme: dark;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                margin: 0;
+                min-height: 100%;
+            }
+            body {
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                padding: 24px 16px;
+                font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+                color: #f3f4f2;
+                background-color: #14332b;
+                background-image:
+                    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M28 6 L40 18 L28 30 L16 18 Z' fill='none' stroke='%23ffffff' stroke-opacity='0.08' stroke-width='1.2'/%3E%3C/svg%3E"),
+                    radial-gradient(circle at 20% 10%, #2a6b4f 0%, #1f4d3a 45%, #14332b 100%);
+                background-size: 56px 56px, cover;
+            }
+            main {
+                width: 100%;
+                max-width: 420px;
+                text-align: center;
+            }
+            img {
+                width: 96px;
+                height: 96px;
+            }
+            h1 {
+                margin: 20px 0 8px;
+                font-family: 'Baloo 2', 'Montserrat', system-ui, sans-serif;
+                font-size: 28px;
+                line-height: 1.15;
+            }
+            p {
+                margin: 0 0 24px;
+                font-size: 15px;
+                line-height: 1.6;
+                color: #cfd8d3;
+            }
+            button {
+                appearance: none;
+                border: 0;
+                border-radius: 999px;
+                padding: 14px 28px;
+                font: 600 15px/1 'Montserrat', system-ui, sans-serif;
+                color: #0a0a0a;
+                background: linear-gradient(135deg, #73c83a 0%, #64cbd4 100%);
+                cursor: pointer;
+                min-height: 44px;
+            }
+            button:focus-visible {
+                outline: 3px solid #ffffff;
+                outline-offset: 3px;
+            }
+            .bar {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: 8px;
+                background: linear-gradient(90deg, #73c83a, #64cbd4);
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <img src="/favicon.svg" alt="Mr Lana" width="96" height="96" />
+            <h1>Parece que no hay conexión</h1>
+            <p>
+                Revisa tu red de datos o Wi-Fi. En cuanto vuelvas a estar en
+                línea podrás seguir explorando la tienda.
+            </p>
+            <button type="button" onclick="location.reload()">
+                Reintentar
+            </button>
+        </main>
+        <div class="bar" aria-hidden="true"></div>
+        <script>
+            window.addEventListener('online', function () {
+                location.reload();
+            });
+        </script>
+    </body>
+</html>

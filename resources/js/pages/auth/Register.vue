@@ -13,14 +13,13 @@ import { store } from '@/routes/register';
 defineOptions({
     layout: {
         title: 'Crea tu cuenta',
-        description:
-            'Regístrate como cliente para comprar y dar seguimiento a tus pedidos.',
+        description: 'Regístrate para comprar y dar seguimiento a tus pedidos.',
     },
 });
 </script>
 
 <template>
-    <Head title="Register" />
+    <Head title="Crear cuenta" />
 
     <Form
         v-bind="store.form()"
@@ -28,20 +27,7 @@ defineOptions({
         v-slot="{ errors, processing }"
         class="space-y-6"
     >
-        <div
-            class="rounded-2xl border border-[var(--brand-gray)]/70 bg-white p-5 shadow-sm"
-        >
-            <p
-                class="text-xs font-bold tracking-[0.2em] text-neutral-400 uppercase"
-            >
-                Registro seguro
-            </p>
-            <p class="mt-1 text-sm text-neutral-500">
-                El rol se asigna automáticamente como <strong>cliente</strong>.
-            </p>
-        </div>
-
-        <div class="grid gap-4">
+        <div class="grid gap-5">
             <div class="grid gap-2">
                 <Label for="name">Nombre</Label>
                 <Input
@@ -53,7 +39,7 @@ defineOptions({
                     autocomplete="name"
                     name="name"
                     placeholder="Nombre completo"
-                    class="h-11"
+                    class="h-11 rounded-xl"
                 />
                 <InputError :message="errors.name" />
             </div>
@@ -67,8 +53,8 @@ defineOptions({
                     :tabindex="2"
                     autocomplete="email"
                     name="email"
-                    placeholder="email@ejemplo.com"
-                    class="h-11"
+                    placeholder="tucorreo@ejemplo.com"
+                    class="h-11 rounded-xl"
                 />
                 <InputError :message="errors.email" />
             </div>
@@ -81,8 +67,8 @@ defineOptions({
                     :tabindex="3"
                     autocomplete="new-password"
                     name="password"
-                    placeholder="Tu contraseña"
-                    class="h-11"
+                    placeholder="Crea una contraseña"
+                    class="h-11 rounded-xl"
                 />
                 <InputError :message="errors.password" />
             </div>
@@ -95,15 +81,15 @@ defineOptions({
                     :tabindex="4"
                     autocomplete="new-password"
                     name="password_confirmation"
-                    placeholder="Confirma tu contraseña"
-                    class="h-11"
+                    placeholder="Repite tu contraseña"
+                    class="h-11 rounded-xl"
                 />
                 <InputError :message="errors.password_confirmation" />
             </div>
 
             <Button
                 type="submit"
-                class="mt-2 h-11 w-full bg-gradient-to-r from-[var(--brand-green)] to-[var(--brand-blue)] font-black text-white transition hover:scale-[1.01]"
+                class="mt-1 h-11 w-full rounded-full text-[15px] font-semibold"
                 tabindex="5"
                 :disabled="processing"
                 data-test="register-user-button"
@@ -115,12 +101,7 @@ defineOptions({
 
         <div class="text-center text-sm text-muted-foreground">
             ¿Ya tienes cuenta?
-            <TextLink
-                :href="login()"
-                class="underline underline-offset-4"
-                :tabindex="6"
-                >Inicia sesión</TextLink
-            >
+            <TextLink :href="login()" :tabindex="6">Inicia sesión</TextLink>
         </div>
     </Form>
 </template>

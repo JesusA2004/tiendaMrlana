@@ -1,0 +1,49 @@
+{
+    "name": "Mr Lana Tienda",
+    "short_name": "Mr Lana",
+    "description": "Tienda en línea Mr Lana: muebles y artículos para el hogar.",
+    "id": "/",
+    "start_url": "/?utm_source=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "lang": "es-MX",
+    "dir": "ltr",
+    "background_color": "#14332B",
+    "theme_color": "#73C83A",
+    "categories": ["shopping", "lifestyle"],
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Catálogo",
+            "short_name": "Catálogo",
+            "url": "/productos",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Mi carrito",
+            "short_name": "Carrito",
+            "url": "/carrito",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+        }
+    ]
+}

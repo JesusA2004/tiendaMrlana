@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2 } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -13,14 +13,23 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import type { PermisosNav } from '@/composables/useRoleNavigation';
 import { useRoleNavigation } from '@/composables/useRoleNavigation';
-import type { NavItem } from '@/types';
 
 const page = usePage();
-const userRole =
-    (page.props.auth?.user?.rol as string | undefined) ?? 'cliente';
 
-const mainNavItems: NavItem[] = useRoleNavigation(userRole);
+const grupos = computed(() =>
+    useRoleNavigation(
+        page.props.auth?.user?.rol ?? 'cliente',
+        (page.props.auth as { can?: PermisosNav } | undefined)?.can ?? {},
+    ),
+);
+
+const inicio = computed(() =>
+    (page.props.auth as { can?: PermisosNav } | undefined)?.can?.operar_pedidos
+        ? '/dashboard'
+        : '/mi-cuenta/pedidos',
+);
 </script>
 
 <template>
@@ -29,7 +38,7 @@ const mainNavItems: NavItem[] = useRoleNavigation(userRole);
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link href="/dashboard">
+                        <Link :href="inicio" aria-label="Inicio del panel">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>
@@ -38,7 +47,7 @@ const mainNavItems: NavItem[] = useRoleNavigation(userRole);
         </SidebarHeader>
 
         <SidebarContent>
-            <NavMain :items="mainNavItems" />
+            <NavMain :groups="grupos" />
         </SidebarContent>
 
         <SidebarFooter>

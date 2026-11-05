@@ -1,37 +1,34 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
-import Swal from 'sweetalert2';
-import { computed, ref } from 'vue';
+import { Head, router, useForm } from '@inertiajs/vue3';
+import {
+    Loader2,
+    MapPin,
+    Pencil,
+    Plus,
+    Star,
+    Trash2,
+    X,
+} from 'lucide-vue-next';
+import { computed, nextTick, ref } from 'vue';
+import CampoTexto from '@/components/compra/CampoTexto.vue';
+import CuentaNav from '@/components/compra/CuentaNav.vue';
+import { ESTADOS_MX } from '@/components/compra/estados';
+import type { Direccion } from '@/components/compra/types';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import PublicLayout from '@/layouts/PublicLayout.vue';
+import direccionesRutas from '@/routes/cliente/direcciones';
 
-interface Direccion {
-    id: number;
-    alias: string;
-    nombre_receptor: string;
-    telefono: string;
-    calle: string;
-    numero_exterior: string;
-    numero_interior?: string | null;
-    colonia: string;
-    municipio: string;
-    estado: string;
-    pais: string;
-    codigo_postal: string;
-    referencias?: string | null;
-    predeterminada: boolean;
-}
-
-interface Endpoints {
-    store: string;
-    updateBase: string;
-    destroyBase: string;
-}
+defineOptions({ layout: PublicLayout });
 
 const props = defineProps<{
     direcciones: Direccion[];
-    endpoints: Endpoints;
 }>();
 
-const editingId = ref<number | null>(null);
+const editandoId = ref<number | null>(null);
+const formularioAbierto = ref(props.direcciones.length === 0);
+const eliminando = ref<number | null>(null);
+const confirmarEliminar = ref<number | null>(null);
 
 const form = useForm({
     alias: '',
@@ -49,280 +46,402 @@ const form = useForm({
     predeterminada: false,
 });
 
-const isEditing = computed(() => editingId.value !== null);
+const editando = computed(() => editandoId.value !== null);
 
-function resetForm() {
-    editingId.value = null;
+function abrirNueva() {
+    editandoId.value = null;
     form.reset();
     form.clearErrors();
-    form.pais = 'México';
-    form.predeterminada = false;
+    formularioAbierto.value = true;
+    enfocar();
 }
 
-function editDireccion(direccion: Direccion) {
-    editingId.value = direccion.id;
-    form.alias = direccion.alias;
-    form.nombre_receptor = direccion.nombre_receptor;
-    form.telefono = direccion.telefono;
-    form.calle = direccion.calle;
-    form.numero_exterior = direccion.numero_exterior;
-    form.numero_interior = direccion.numero_interior || '';
-    form.colonia = direccion.colonia;
-    form.municipio = direccion.municipio;
-    form.estado = direccion.estado;
-    form.pais = direccion.pais || 'México';
-    form.codigo_postal = direccion.codigo_postal;
-    form.referencias = direccion.referencias || '';
-    form.predeterminada = direccion.predeterminada;
+function editar(d: Direccion) {
+    editandoId.value = d.id;
+    form.clearErrors();
+    form.alias = d.alias ?? '';
+    form.nombre_receptor = d.nombre_receptor;
+    form.telefono = d.telefono;
+    form.calle = d.calle;
+    form.numero_exterior = d.numero_exterior;
+    form.numero_interior = d.numero_interior ?? '';
+    form.colonia = d.colonia;
+    form.municipio = d.municipio;
+    form.estado = d.estado;
+    form.pais = d.pais || 'México';
+    form.codigo_postal = d.codigo_postal;
+    form.referencias = d.referencias ?? '';
+    form.predeterminada = d.predeterminada;
+    formularioAbierto.value = true;
+    enfocar();
 }
 
-function submit() {
-    if (isEditing.value) {
-        form.put(`${props.endpoints.updateBase}/${editingId.value}`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Dirección actualizada',
-                    timer: 1400,
-                    showConfirmButton: false,
-                });
-                resetForm();
-            },
-        });
-        return;
+function cerrar() {
+    formularioAbierto.value = false;
+    editandoId.value = null;
+    form.reset();
+    form.clearErrors();
+}
+
+function enfocar() {
+    nextTick(() => {
+        document
+            .getElementById('formulario-direccion')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('alias')?.focus({ preventScroll: true });
+    });
+}
+
+function guardar() {
+    const opciones = { preserveScroll: true, onSuccess: cerrar };
+
+    if (editandoId.value !== null) {
+        form.put(direccionesRutas.update.url(editandoId.value), opciones);
+    } else {
+        form.post(direccionesRutas.store.url(), opciones);
     }
+}
 
-    form.post(props.endpoints.store, {
+function eliminar(id: number) {
+    router.delete(direccionesRutas.destroy.url(id), {
         preserveScroll: true,
-        onSuccess: () => {
-            Swal.fire({
-                icon: 'success',
-                title: 'Dirección guardada',
-                timer: 1400,
-                showConfirmButton: false,
-            });
-            resetForm();
+        onStart: () => (eliminando.value = id),
+        onFinish: () => {
+            eliminando.value = null;
+            confirmarEliminar.value = null;
         },
     });
 }
 
-async function removeDireccion(id: number) {
-    const result = await Swal.fire({
-        icon: 'warning',
-        title: '¿Eliminar dirección?',
-        text: 'Esta acción no se puede deshacer.',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar',
-    });
-
-    if (!result.isConfirmed) return;
-
-    form.delete(`${props.endpoints.destroyBase}/${id}`, {
-        preserveScroll: true,
-    });
+function hacerPrincipal(d: Direccion) {
+    router.put(
+        direccionesRutas.update.url(d.id),
+        { ...d, pais: d.pais || 'México', predeterminada: true },
+        { preserveScroll: true },
+    );
 }
 </script>
 
 <template>
     <Head title="Mis direcciones" />
 
-    <div class="space-y-6 p-4 sm:p-6 lg:p-8">
-        <header
-            class="rounded-3xl border border-[var(--brand-gray)]/60 bg-gradient-to-r from-white to-[var(--brand-soft)] p-4 shadow-sm sm:p-6"
-        >
-            <h1 class="text-2xl font-black">Mis direcciones</h1>
-            <p class="text-sm text-neutral-500">
-                Administra tus direcciones para futuras compras.
+    <CuentaNav
+        activo="direcciones"
+        titulo="Mis direcciones"
+        descripcion="Guarda tus domicilios para comprar más rápido."
+    />
+
+    <div class="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+        <div class="mb-5 flex items-center justify-between gap-3">
+            <p class="text-sm text-muted-foreground">
+                {{ direcciones.length }} dirección{{
+                    direcciones.length === 1 ? '' : 'es'
+                }}
+                guardada{{ direcciones.length === 1 ? '' : 's' }}
             </p>
-        </header>
+            <Button
+                v-if="!formularioAbierto || editando"
+                class="rounded-full"
+                @click="abrirNueva"
+            >
+                <Plus aria-hidden="true" />
+                Agregar dirección
+            </Button>
+        </div>
 
-        <section class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-            <article class="rounded-2xl border bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <h2 class="text-lg font-black">
-                        {{ isEditing ? 'Editar dirección' : 'Nueva dirección' }}
-                    </h2>
-
-                    <button
-                        v-if="isEditing"
-                        type="button"
-                        class="rounded-full border border-neutral-200 px-4 py-2 text-sm font-bold transition hover:bg-neutral-50"
-                        @click="resetForm"
-                    >
-                        Cancelar edición
-                    </button>
-                </div>
-
-                <form class="mt-4 grid gap-4 sm:grid-cols-2" @submit.prevent="submit">
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">Alias</label>
-                        <input v-model="form.alias" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.alias" class="mt-1 text-xs text-red-600">{{ form.errors.alias }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">Nombre receptor</label>
-                        <input v-model="form.nombre_receptor" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.nombre_receptor" class="mt-1 text-xs text-red-600">{{ form.errors.nombre_receptor }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">Teléfono</label>
-                        <input v-model="form.telefono" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.telefono" class="mt-1 text-xs text-red-600">{{ form.errors.telefono }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">Código postal</label>
-                        <input v-model="form.codigo_postal" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.codigo_postal" class="mt-1 text-xs text-red-600">{{ form.errors.codigo_postal }}</p>
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label class="mb-2 block text-sm font-semibold">Calle</label>
-                        <input v-model="form.calle" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.calle" class="mt-1 text-xs text-red-600">{{ form.errors.calle }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">No. exterior</label>
-                        <input v-model="form.numero_exterior" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.numero_exterior" class="mt-1 text-xs text-red-600">{{ form.errors.numero_exterior }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">No. interior</label>
-                        <input v-model="form.numero_interior" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">Colonia</label>
-                        <input v-model="form.colonia" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.colonia" class="mt-1 text-xs text-red-600">{{ form.errors.colonia }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">Municipio</label>
-                        <input v-model="form.municipio" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.municipio" class="mt-1 text-xs text-red-600">{{ form.errors.municipio }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">Estado</label>
-                        <input v-model="form.estado" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.estado" class="mt-1 text-xs text-red-600">{{ form.errors.estado }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-semibold">País</label>
-                        <input v-model="form.pais" type="text" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.pais" class="mt-1 text-xs text-red-600">{{ form.errors.pais }}</p>
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label class="mb-2 block text-sm font-semibold">Referencias</label>
-                        <textarea v-model="form.referencias" rows="3" class="w-full rounded-xl border px-3 py-2.5 text-sm" />
-                        <p v-if="form.errors.referencias" class="mt-1 text-xs text-red-600">{{ form.errors.referencias }}</p>
-                    </div>
-
-                    <label class="sm:col-span-2 flex items-center gap-3 rounded-2xl bg-neutral-50 px-4 py-3">
-                        <input v-model="form.predeterminada" type="checkbox" />
-                        <span class="text-sm font-medium">Marcar como dirección predeterminada</span>
-                    </label>
-
-                    <div class="sm:col-span-2">
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="w-full rounded-full bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-90 disabled:opacity-60"
-                        >
-                            {{ form.processing ? 'Guardando...' : isEditing ? 'Actualizar dirección' : 'Guardar dirección' }}
-                        </button>
-                    </div>
-                </form>
-            </article>
-
-            <article class="rounded-2xl border bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-black">Direcciones guardadas</h2>
-
-                <div v-if="direcciones.length" class="mt-4 space-y-4">
-                    <div
-                        v-for="direccion in direcciones"
-                        :key="direccion.id"
-                        class="rounded-2xl border border-neutral-200 p-4"
-                    >
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <p class="font-black">{{ direccion.alias }}</p>
-                                    <span
-                                        v-if="direccion.predeterminada"
-                                        class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase text-emerald-700"
-                                    >
-                                        Predeterminada
-                                    </span>
-                                </div>
-
-                                <p class="mt-2 text-sm text-neutral-700">
-                                    {{ direccion.nombre_receptor }} · {{ direccion.telefono }}
-                                </p>
-
-                                <p class="mt-2 text-sm text-neutral-600">
-                                    {{
-                                        [
-                                            direccion.calle,
-                                            direccion.numero_exterior,
-                                            direccion.numero_interior,
-                                            direccion.colonia,
-                                            direccion.municipio,
-                                            direccion.estado,
-                                            direccion.pais,
-                                            direccion.codigo_postal,
-                                        ]
-                                            .filter(Boolean)
-                                            .join(', ')
-                                    }}
-                                </p>
-
-                                <p
-                                    v-if="direccion.referencias"
-                                    class="mt-2 text-sm text-neutral-500"
-                                >
-                                    {{ direccion.referencias }}
-                                </p>
-                            </div>
-
-                            <div class="flex gap-2">
-                                <button
-                                    type="button"
-                                    class="rounded-full border border-neutral-200 px-4 py-2 text-sm font-bold transition hover:bg-neutral-50"
-                                    @click="editDireccion(direccion)"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    type="button"
-                                    class="rounded-full border border-red-200 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-50"
-                                    @click="removeDireccion(direccion.id)"
-                                >
-                                    Eliminar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    v-else
-                    class="mt-4 rounded-2xl border border-dashed px-6 py-12 text-center"
+        <!-- Formulario -->
+        <form
+            v-if="formularioAbierto"
+            id="formulario-direccion"
+            class="mb-6 scroll-mt-24 rounded-3xl border-2 border-brand-green/50 bg-background p-5 shadow-sm sm:p-6"
+            novalidate
+            @submit.prevent="guardar"
+        >
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <h2 class="font-display text-xl font-bold">
+                    {{ editando ? 'Editar dirección' : 'Nueva dirección' }}
+                </h2>
+                <button
+                    v-if="direcciones.length"
+                    type="button"
+                    class="flex size-9 items-center justify-center rounded-full hover:bg-muted"
+                    aria-label="Cerrar formulario"
+                    @click="cerrar"
                 >
-                    <p class="text-sm text-neutral-500">
-                        Aún no tienes direcciones guardadas.
+                    <X class="size-4" aria-hidden="true" />
+                </button>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-6">
+                <div class="sm:col-span-2">
+                    <CampoTexto
+                        id="alias"
+                        v-model="form.alias"
+                        etiqueta="Nombre de la dirección"
+                        placeholder="Casa, oficina…"
+                        requerido
+                        :error="form.errors.alias"
+                    />
+                </div>
+                <div class="sm:col-span-2">
+                    <CampoTexto
+                        id="nombre_receptor"
+                        v-model="form.nombre_receptor"
+                        etiqueta="¿Quién recibe?"
+                        autocomplete="name"
+                        requerido
+                        :error="form.errors.nombre_receptor"
+                    />
+                </div>
+                <div class="sm:col-span-2">
+                    <CampoTexto
+                        id="telefono"
+                        v-model="form.telefono"
+                        etiqueta="Teléfono"
+                        tipo="tel"
+                        inputmode="tel"
+                        autocomplete="tel"
+                        requerido
+                        :error="form.errors.telefono"
+                    />
+                </div>
+                <div class="sm:col-span-6">
+                    <CampoTexto
+                        id="calle"
+                        v-model="form.calle"
+                        etiqueta="Calle"
+                        autocomplete="address-line1"
+                        requerido
+                        :error="form.errors.calle"
+                    />
+                </div>
+                <div class="sm:col-span-3">
+                    <CampoTexto
+                        id="numero_exterior"
+                        v-model="form.numero_exterior"
+                        etiqueta="Núm. ext."
+                        requerido
+                        :error="form.errors.numero_exterior"
+                    />
+                </div>
+                <div class="sm:col-span-3">
+                    <CampoTexto
+                        id="numero_interior"
+                        v-model="form.numero_interior"
+                        etiqueta="Núm. int."
+                        :error="form.errors.numero_interior"
+                    />
+                </div>
+                <div class="sm:col-span-3">
+                    <CampoTexto
+                        id="colonia"
+                        v-model="form.colonia"
+                        etiqueta="Colonia"
+                        requerido
+                        :error="form.errors.colonia"
+                    />
+                </div>
+                <div class="sm:col-span-3">
+                    <CampoTexto
+                        id="municipio"
+                        v-model="form.municipio"
+                        etiqueta="Municipio o alcaldía"
+                        autocomplete="address-level2"
+                        requerido
+                        :error="form.errors.municipio"
+                    />
+                </div>
+                <div class="space-y-1.5 sm:col-span-4">
+                    <Label for="estado">Estado</Label>
+                    <select
+                        id="estado"
+                        v-model="form.estado"
+                        class="h-11 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                        autocomplete="address-level1"
+                        :aria-invalid="!!form.errors.estado"
+                    >
+                        <option value="" disabled>Elige tu estado</option>
+                        <option
+                            v-if="
+                                form.estado &&
+                                !ESTADOS_MX.includes(form.estado as never)
+                            "
+                            :value="form.estado"
+                        >
+                            {{ form.estado }}
+                        </option>
+                        <option v-for="e in ESTADOS_MX" :key="e" :value="e">
+                            {{ e }}
+                        </option>
+                    </select>
+                    <p
+                        v-if="form.errors.estado"
+                        class="text-xs font-medium text-destructive"
+                        role="alert"
+                    >
+                        {{ form.errors.estado }}
                     </p>
                 </div>
-            </article>
-        </section>
+                <div class="sm:col-span-2">
+                    <CampoTexto
+                        id="codigo_postal"
+                        v-model="form.codigo_postal"
+                        etiqueta="Código postal"
+                        inputmode="numeric"
+                        autocomplete="postal-code"
+                        :maxlength="5"
+                        requerido
+                        :error="form.errors.codigo_postal"
+                    />
+                </div>
+                <div class="sm:col-span-6">
+                    <CampoTexto
+                        id="referencias"
+                        v-model="form.referencias"
+                        etiqueta="Referencias"
+                        placeholder="Entre calles, color de fachada…"
+                        :error="form.errors.referencias"
+                    />
+                </div>
+                <label class="flex items-center gap-2 text-sm sm:col-span-6">
+                    <input
+                        v-model="form.predeterminada"
+                        type="checkbox"
+                        class="size-4 rounded accent-[var(--brand-green-strong)]"
+                    />
+                    Usar como dirección principal
+                </label>
+            </div>
+            <div class="mt-5 flex flex-wrap gap-2">
+                <Button
+                    type="submit"
+                    class="rounded-full font-bold"
+                    :disabled="form.processing"
+                >
+                    <Loader2
+                        v-if="form.processing"
+                        class="animate-spin"
+                        aria-hidden="true"
+                    />
+                    {{ editando ? 'Guardar cambios' : 'Guardar dirección' }}
+                </Button>
+                <Button
+                    v-if="direcciones.length"
+                    type="button"
+                    variant="ghost"
+                    class="rounded-full"
+                    @click="cerrar"
+                >
+                    Cancelar
+                </Button>
+            </div>
+        </form>
+
+        <!-- Lista -->
+        <ul v-if="direcciones.length" class="grid gap-4 sm:grid-cols-2">
+            <li
+                v-for="d in direcciones"
+                :key="d.id"
+                class="flex flex-col rounded-3xl border bg-background p-5 shadow-xs"
+                :class="
+                    d.predeterminada ? 'border-brand-green' : 'border-border'
+                "
+            >
+                <div class="mb-2 flex items-start gap-3">
+                    <span
+                        class="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-green-soft text-brand-green-strong"
+                    >
+                        <MapPin class="size-5" aria-hidden="true" />
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold">
+                            {{ d.alias || 'Dirección' }}
+                        </p>
+                        <p
+                            v-if="d.predeterminada"
+                            class="inline-flex items-center gap-1 text-xs font-semibold text-brand-green-strong"
+                        >
+                            <Star
+                                class="size-3 fill-current"
+                                aria-hidden="true"
+                            />
+                            Principal
+                        </p>
+                    </div>
+                </div>
+                <div class="flex-1 text-sm">
+                    <p>{{ d.nombre_receptor }} · {{ d.telefono }}</p>
+                    <p class="text-muted-foreground">
+                        {{ d.calle }} {{ d.numero_exterior
+                        }}<template v-if="d.numero_interior">
+                            int. {{ d.numero_interior }}</template
+                        >, {{ d.colonia }}, {{ d.municipio }}, {{ d.estado }},
+                        C.P. {{ d.codigo_postal }}
+                    </p>
+                    <p
+                        v-if="d.referencias"
+                        class="mt-1 text-xs text-muted-foreground"
+                    >
+                        {{ d.referencias }}
+                    </p>
+                </div>
+                <div
+                    class="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3"
+                >
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        class="rounded-full"
+                        @click="editar(d)"
+                    >
+                        <Pencil aria-hidden="true" />
+                        Editar
+                    </Button>
+                    <Button
+                        v-if="!d.predeterminada"
+                        size="sm"
+                        variant="ghost"
+                        class="rounded-full"
+                        @click="hacerPrincipal(d)"
+                    >
+                        Hacer principal
+                    </Button>
+                    <template v-if="confirmarEliminar === d.id">
+                        <Button
+                            size="sm"
+                            variant="destructive"
+                            class="ml-auto rounded-full"
+                            :disabled="eliminando === d.id"
+                            @click="eliminar(d.id)"
+                        >
+                            <Loader2
+                                v-if="eliminando === d.id"
+                                class="animate-spin"
+                                aria-hidden="true"
+                            />
+                            Sí, eliminar
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            class="rounded-full"
+                            @click="confirmarEliminar = null"
+                        >
+                            No
+                        </Button>
+                    </template>
+                    <Button
+                        v-else
+                        size="sm"
+                        variant="ghost"
+                        class="ml-auto rounded-full text-muted-foreground hover:text-destructive"
+                        :aria-label="`Eliminar ${d.alias || 'dirección'}`"
+                        @click="confirmarEliminar = d.id"
+                    >
+                        <Trash2 aria-hidden="true" />
+                        Eliminar
+                    </Button>
+                </div>
+            </li>
+        </ul>
     </div>
 </template>

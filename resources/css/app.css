@@ -9,13 +9,17 @@
 
 @theme inline {
     --font-sans:
-        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+        'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display:
+        'Baloo 2', 'Montserrat', ui-rounded, ui-sans-serif, system-ui,
+        sans-serif;
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
+    --radius-xl: calc(var(--radius) + 4px);
+    --radius-2xl: calc(var(--radius) + 8px);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -59,15 +63,33 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Marca Mr Lana (docs/ARQUITECTURA.md §7) → clases bg-brand-green, text-brand-green-strong, etc. */
+    --color-brand-green: var(--brand-green);
+    --color-brand-green-strong: var(--brand-green-strong);
+    --color-brand-green-soft: var(--brand-green-soft);
+    --color-brand-teal: var(--brand-teal);
+    --color-brand-teal-strong: var(--brand-teal-strong);
+    --color-brand-teal-soft: var(--brand-teal-soft);
+    --color-brand-deep: var(--brand-deep);
+    --color-brand-deep-2: var(--brand-deep-2);
+    --color-brand-warm: var(--brand-warm);
+    --color-brand-ink: var(--brand-ink);
+    --color-surface: var(--surface);
+
+    /* Estados semánticos */
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
 }
 
 /*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
 */
 @layer base {
     *,
@@ -79,94 +101,135 @@
     }
 }
 
-@layer utilities {
-    body,
-    html {
-        --font-sans:
-            'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-            'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-            'Noto Color Emoji';
-    }
-}
-
+/*
+ * ---------------------------------------------------------------------------
+ * Tokens de marca Mr Lana — contrato compartido. NO renombrar.
+ *  --brand-green (#73C83A): fondos, iconos, botones con texto negro.
+ *  --brand-green-strong (#3F8A1C): texto/links verdes sobre fondo claro (AA).
+ *  --brand-teal (#64CBD4): acento. --brand-teal-strong: texto turquesa AA.
+ *  --brand-deep / --brand-deep-2: verdes profundos para fondos oscuros.
+ *  --brand-warm (#E3E1DE): gris cálido del manual (superficie suave).
+ *  --primary = verde de marca con --primary-foreground negro (contraste 10:1).
+ * Variables legadas (--brand-blue, --brand-gray, --brand-soft, --brand-text)
+ * se conservan como alias para pantallas existentes.
+ * ---------------------------------------------------------------------------
+ */
 :root {
+    --brand-green: #73c83a;
+    --brand-green-strong: #3f8a1c;
+    --brand-green-soft: #eaf6e1;
+    --brand-teal: #64cbd4;
+    --brand-teal-strong: #1b7880;
+    --brand-teal-soft: #e3f6f8;
+    --brand-deep: #1f4d3a;
+    --brand-deep-2: #14332b;
+    --brand-warm: #e3e1de;
+    --brand-ink: #0a0a0a;
+    --brand-gradient: linear-gradient(135deg, #73c83a 0%, #64cbd4 100%);
+    --brand-gradient-deep: linear-gradient(160deg, #1f4d3a 0%, #14332b 100%);
+    --brand-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M28 6 L40 18 L28 30 L16 18 Z' fill='none' stroke='%23ffffff' stroke-opacity='0.09' stroke-width='1.2'/%3E%3Cg fill='%23ffffff' fill-opacity='0.12'%3E%3Ccircle cx='0' cy='46' r='1.6'/%3E%3Ccircle cx='56' cy='46' r='1.6'/%3E%3Ccircle cx='28' cy='46' r='1.1'/%3E%3C/g%3E%3C/svg%3E");
+    --brand-pattern-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M28 6 L40 18 L28 30 L16 18 Z' fill='none' stroke='%231f4d3a' stroke-opacity='0.07' stroke-width='1.2'/%3E%3Cg fill='%2373c83a' fill-opacity='0.28'%3E%3Ccircle cx='0' cy='46' r='1.6'/%3E%3Ccircle cx='56' cy='46' r='1.6'/%3E%3C/g%3E%3C/svg%3E");
 
-    --brand-green: #7dd03c;
-    --brand-blue: #30beef;
-    --brand-gray: #d5d5d5;
-    --brand-soft: #f6f6f6;
-    --brand-text: #1f2937;
+    /* Alias legados */
+    --brand-blue: var(--brand-teal);
+    --brand-gray: var(--brand-warm);
+    --brand-soft: #f5f4f2;
+    --brand-text: #1c1c1c;
 
-    --background: hsl(0 0% 100%);
-    --foreground: hsl(0 0% 3.9%);
-    --card: hsl(0 0% 100%);
-    --card-foreground: hsl(0 0% 3.9%);
-    --popover: hsl(0 0% 100%);
-    --popover-foreground: hsl(0 0% 3.9%);
-    --primary: hsl(0 0% 9%);
-    --primary-foreground: hsl(0 0% 98%);
-    --secondary: hsl(0 0% 92.1%);
-    --secondary-foreground: hsl(0 0% 9%);
-    --muted: hsl(0 0% 96.1%);
-    --muted-foreground: hsl(0 0% 45.1%);
-    --accent: hsl(0 0% 96.1%);
-    --accent-foreground: hsl(0 0% 9%);
-    --destructive: hsl(0 84.2% 60.2%);
-    --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(0 0% 92.8%);
-    --input: hsl(0 0% 89.8%);
-    --ring: hsl(0 0% 3.9%);
-    --chart-1: hsl(12 76% 61%);
-    --chart-2: hsl(173 58% 39%);
-    --chart-3: hsl(197 37% 24%);
-    --chart-4: hsl(43 74% 66%);
-    --chart-5: hsl(27 87% 67%);
-    --radius: 0.5rem;
-    --sidebar-background: hsl(0 0% 98%);
-    --sidebar-foreground: hsl(240 5.3% 26.1%);
-    --sidebar-primary: hsl(0 0% 10%);
-    --sidebar-primary-foreground: hsl(0 0% 98%);
-    --sidebar-accent: hsl(0 0% 94%);
-    --sidebar-accent-foreground: hsl(0 0% 30%);
-    --sidebar-border: hsl(0 0% 91%);
-    --sidebar-ring: hsl(217.2 91.2% 59.8%);
-    --sidebar: hsl(0 0% 98%);
+    --surface: #f5f4f2;
+
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    --popover: #ffffff;
+    --popover-foreground: #0a0a0a;
+    --primary: #73c83a;
+    --primary-foreground: #0a0a0a;
+    --secondary: #f1efec;
+    --secondary-foreground: #1c1c1c;
+    --muted: #f3f2ef;
+    --muted-foreground: #5c5a56;
+    --accent: #e3f6f8;
+    --accent-foreground: #0d4c52;
+    --destructive: #d92d20;
+    --destructive-foreground: #ffffff;
+    --success: #3f8a1c;
+    --success-foreground: #ffffff;
+    --warning: #b45309;
+    --warning-foreground: #ffffff;
+    --info: #1b7880;
+    --info-foreground: #ffffff;
+    --border: #e6e3df;
+    --input: #dcd9d4;
+    --ring: #3f8a1c;
+    --chart-1: #73c83a;
+    --chart-2: #64cbd4;
+    --chart-3: #1f4d3a;
+    --chart-4: #e3b23c;
+    --chart-5: #e07a5f;
+    --radius: 0.75rem;
+    --sidebar-background: #f7f6f4;
+    --sidebar-foreground: #2b2a28;
+    --sidebar-primary: #1f4d3a;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #eaf6e1;
+    --sidebar-accent-foreground: #14332b;
+    --sidebar-border: #e6e3df;
+    --sidebar-ring: #3f8a1c;
+    --sidebar: #f7f6f4;
 }
 
 .dark {
-    --background: hsl(0 0% 3.9%);
-    --foreground: hsl(0 0% 98%);
-    --card: hsl(0 0% 3.9%);
-    --card-foreground: hsl(0 0% 98%);
-    --popover: hsl(0 0% 3.9%);
-    --popover-foreground: hsl(0 0% 98%);
-    --primary: hsl(0 0% 98%);
-    --primary-foreground: hsl(0 0% 9%);
-    --secondary: hsl(0 0% 14.9%);
-    --secondary-foreground: hsl(0 0% 98%);
-    --muted: hsl(0 0% 16.08%);
-    --muted-foreground: hsl(0 0% 63.9%);
-    --accent: hsl(0 0% 14.9%);
-    --accent-foreground: hsl(0 0% 98%);
-    --destructive: hsl(0 84% 60%);
-    --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(0 0% 14.9%);
-    --input: hsl(0 0% 14.9%);
-    --ring: hsl(0 0% 83.1%);
-    --chart-1: hsl(220 70% 50%);
-    --chart-2: hsl(160 60% 45%);
-    --chart-3: hsl(30 80% 55%);
-    --chart-4: hsl(280 65% 60%);
-    --chart-5: hsl(340 75% 55%);
-    --sidebar-background: hsl(0 0% 7%);
-    --sidebar-foreground: hsl(0 0% 95.9%);
-    --sidebar-primary: hsl(360, 100%, 100%);
-    --sidebar-primary-foreground: hsl(0 0% 100%);
-    --sidebar-accent: hsl(0 0% 15.9%);
-    --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-    --sidebar-border: hsl(0 0% 15.9%);
-    --sidebar-ring: hsl(217.2 91.2% 59.8%);
-    --sidebar: hsl(240 5.9% 10%);
+    --brand-green-strong: #8fd85c;
+    --brand-green-soft: #1d3324;
+    --brand-teal-strong: #7fd8e0;
+    --brand-teal-soft: #15343a;
+    --brand-warm: #2a2926;
+    --brand-soft: #151a18;
+    --brand-text: #f2f2f0;
+
+    --surface: #121816;
+
+    --background: #0b1110;
+    --foreground: #f3f4f2;
+    --card: #111917;
+    --card-foreground: #f3f4f2;
+    --popover: #111917;
+    --popover-foreground: #f3f4f2;
+    --primary: #73c83a;
+    --primary-foreground: #0a0a0a;
+    --secondary: #1a2421;
+    --secondary-foreground: #f3f4f2;
+    --muted: #18211e;
+    --muted-foreground: #a3aba7;
+    --accent: #15343a;
+    --accent-foreground: #c9f0f3;
+    --destructive: #f2564b;
+    --destructive-foreground: #0a0a0a;
+    --success: #73c83a;
+    --success-foreground: #0a0a0a;
+    --warning: #f0a542;
+    --warning-foreground: #0a0a0a;
+    --info: #64cbd4;
+    --info-foreground: #0a0a0a;
+    --border: #24302c;
+    --input: #2c3935;
+    --ring: #73c83a;
+    --chart-1: #73c83a;
+    --chart-2: #64cbd4;
+    --chart-3: #9fd8b4;
+    --chart-4: #e3b23c;
+    --chart-5: #e07a5f;
+    --sidebar-background: #0e1513;
+    --sidebar-foreground: #eef0ee;
+    --sidebar-primary: #73c83a;
+    --sidebar-primary-foreground: #0a0a0a;
+    --sidebar-accent: #18241f;
+    --sidebar-accent-foreground: #eef0ee;
+    --sidebar-border: #22302b;
+    --sidebar-ring: #73c83a;
+    --sidebar: #0e1513;
 }
 
 @layer base {
@@ -175,5 +238,113 @@
     }
     body {
         @apply bg-background text-foreground;
+    }
+    h1,
+    h2,
+    h3 {
+        font-family: var(--font-display);
+    }
+}
+
+/* Utilidades de marca */
+@utility font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+}
+
+@utility bg-brand-gradient {
+    background-image: var(--brand-gradient);
+}
+
+@utility bg-brand-deep-gradient {
+    background-color: var(--brand-deep-2);
+    background-image: var(--brand-gradient-deep);
+}
+
+@utility text-brand-gradient {
+    background-image: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Patrón de rombos y puntos del manual (trazo blanco translúcido, para fondos oscuros) */
+@utility bg-brand-pattern {
+    background-image: var(--brand-pattern);
+    background-size: 56px 56px;
+}
+
+/* Fondo verde profundo + patrón de rombos (portadas del manual) */
+@utility bg-brand-deep-pattern {
+    background-color: var(--brand-deep-2);
+    background-image: var(--brand-pattern), var(--brand-gradient-deep);
+    background-size:
+        56px 56px,
+        cover;
+}
+
+/* Variante del patrón para fondos claros */
+@utility bg-brand-pattern-light {
+    background-image: var(--brand-pattern-light);
+    background-size: 56px 56px;
+}
+
+/* Animaciones de la tienda (todas se desactivan con prefers-reduced-motion) */
+@keyframes mrl-marquee {
+    from {
+        transform: translate3d(0, 0, 0);
+    }
+    to {
+        transform: translate3d(-50%, 0, 0);
+    }
+}
+
+@keyframes mrl-float {
+    0%,
+    100% {
+        transform: translateY(0) rotate(-1.5deg);
+    }
+    50% {
+        transform: translateY(-10px) rotate(1deg);
+    }
+}
+
+@utility animate-marquee {
+    animation: mrl-marquee var(--marquee-duration, 40s) linear infinite;
+}
+
+@utility animate-float {
+    animation: mrl-float 7s ease-in-out infinite;
+}
+
+/* Revelado al hacer scroll (directiva v-reveal, resources/js/lib/reveal.ts) */
+.reveal {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0);
+    transition:
+        opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .animate-marquee,
+    .animate-float {
+        animation: none !important;
+    }
+
+    html {
+        scroll-behavior: auto !important;
     }
 }

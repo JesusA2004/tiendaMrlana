@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { CircleCheck } from 'lucide-vue-next';
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,9 @@ import { email } from '@/routes/password';
 
 defineOptions({
     layout: {
-        title: 'Forgot password',
-        description: 'Enter your email to receive a password reset link',
+        title: '¿Olvidaste tu contraseña?',
+        description:
+            'Escribe tu correo y te enviaremos un enlace para restablecerla.',
     },
 });
 
@@ -22,45 +24,48 @@ defineProps<{
 </script>
 
 <template>
-    <Head title="Forgot password" />
+    <Head title="Recuperar contraseña" />
 
     <div
         v-if="status"
-        class="mb-4 text-center text-sm font-medium text-green-600"
+        role="status"
+        class="mb-6 flex items-start gap-2 rounded-2xl border border-brand-green/40 bg-brand-green-soft px-4 py-3 text-sm font-medium text-brand-green-strong"
     >
-        {{ status }}
+        <CircleCheck class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <span>{{ status }}</span>
     </div>
 
     <div class="space-y-6">
         <Form v-bind="email.form()" v-slot="{ errors, processing }">
             <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+                <Label for="email">Correo electrónico</Label>
                 <Input
                     id="email"
                     type="email"
                     name="email"
                     autocomplete="off"
                     autofocus
-                    placeholder="email@example.com"
+                    placeholder="tucorreo@ejemplo.com"
+                    class="h-11 rounded-xl"
                 />
                 <InputError :message="errors.email" />
             </div>
 
-            <div class="my-6 flex items-center justify-start">
+            <div class="mt-6">
                 <Button
-                    class="w-full"
+                    class="h-11 w-full rounded-full text-[15px] font-semibold"
                     :disabled="processing"
                     data-test="email-password-reset-link-button"
                 >
                     <Spinner v-if="processing" />
-                    Email password reset link
+                    Enviar enlace de recuperación
                 </Button>
             </div>
         </Form>
 
-        <div class="space-x-1 text-center text-sm text-muted-foreground">
-            <span>Or, return to</span>
-            <TextLink :href="login()">log in</TextLink>
+        <div class="text-center text-sm text-muted-foreground">
+            ¿Ya la recordaste?
+            <TextLink :href="login()">Inicia sesión</TextLink>
         </div>
     </div>
 </template>
